@@ -1,0 +1,100 @@
+import json
+from pathlib import Path
+
+from team_wrapped.scenes.derived import DerivedData
+from team_wrapped.scenes.loader import Entry, Scene, Script
+from team_wrapped.scenes.scene_types import SceneType
+from team_wrapped.scenes.validate import format_report, resolve_and_validate, validate_script
+
+TYPES = {"stats": SceneType("stats", 8.0, ["items"], Path("."))}
+CATALOG = {"summary.totals", "contributors"}
+
+
+def make_data(tmp_path, partial=()):
+    d = tmp_path / "derived"
+    d.mkdir(exist_ok=True)
+    (d / "summary.json").write_text(json.dumps(
+        {"scopes": {"all": {"totals": {"commits": 5}}}}))
+    (d / "meta.json").write_text(json.dumps({"partial_datasets": list(partial)}))
+    return DerivedData(tmp_path)
+
+
+def run(tmp_path, requires, params=None, entry=None, partial=(), catalog=CATALOG, type_="stats"):
+    scene = Scene(id="s", type=type_, title="S", requires=requires,
+                  params={"items": []} if params is None else params)
+    script = Script(id="x", title="X", period=2026, scope="all", scenes=[entry or Entry(scene="s")])
+    return validate_script(script, {"s": scene}, make_data(tmp_path, partial), catalog, TYPES)
+
+
+REQ = [{"dataset": "summary.totals", "fields": ["commits"]}]
+
+
+def test_supported(tmp_path):
+    report = run(tmp_path, REQ)
+    assert report.results[0].status == "supported"
+    assert report.results[0].problems == []
+    assert report.ok
+
+
+def test_missing_field(tmp_path):
+    report = run(tmp_path, [{"dataset": "summary.totals", "fields": ["commits", "nope"]}])
+    assert report.results[0].status == "unsupported"
+    assert "'summary.totals' is missing field 'nope'" in report.results[0].problems
+    assert not report.ok
+
+
+def test_dataset_not_in_catalog(tmp_path):
+    report = run(tmp_path, [{"dataset": "made.up", "fields": []}])
+    assert "dataset 'made.up' is not in the catalog" in report.results[0].problems
+
+
+def test_no_data_for_scope(tmp_path):
+    entry = Entry(scene="s", scope="alpha")  # scope key becomes group:alpha, which has no data
+    report = run(tmp_path, REQ, entry=entry)
+    assert "no data for 'summary.totals' in scope 'group:alpha'" in report.results[0].problems
+
+
+def test_partial_allowed_and_not_allowed(tmp_path):
+    (tmp_path / "a").mkdir()   # make_data creates derived/, so each run needs its own folder
+    (tmp_path / "b").mkdir()
+    allowed = [{"dataset": "summary.totals", "fields": ["commits"], "allow_partial": True}]
+    report = run(tmp_path / "a", allowed, partial=["summary.totals"])
+    assert report.results[0].status == "partial"
+    assert report.ok
+    report = run(tmp_path / "b", REQ, partial=["summary.totals"])
+    assert report.results[0].status == "unsupported"
+    assert any("partial" in p for p in report.results[0].problems)
+
+
+def test_unknown_type_and_missing_param(tmp_path):
+    report = run(tmp_path, REQ, type_="nope")
+    assert "unknown scene type 'nope'" in report.results[0].problems
+    report = run(tmp_path, REQ, params={})
+    assert "missing required param 'items'" in report.results[0].problems
+
+
+def test_value_refs_must_resolve_to_required_data(tmp_path):
+    good = {"items": [{"label": "C", "value": "summary.totals.commits"}]}
+    assert run(tmp_path, REQ, params=good).results[0].status == "supported"
+    bad = {"items": [{"label": "C", "value": "summary.totals.nope"}]}
+    report = run(tmp_path, REQ, params=bad)
+    assert "value 'summary.totals.nope' does not resolve to required data" in report.results[0].problems
+
+
+def test_skip_vs_fail(tmp_path):
+    bad_req = [{"dataset": "summary.totals", "fields": ["nope"]}]
+    skip = run(tmp_path, bad_req, entry=Entry(scene="s", on_missing_data="skip"))
+    assert skip.results[0].status == "unsupported" and skip.results[0].skipped
+    assert skip.ok
+    fail = run(tmp_path, bad_req, entry=Entry(scene="s", on_missing_data="fail"))
+    assert not fail.results[0].skipped and not fail.ok
+
+
+def test_year_wrapped_on_sample(repo_root, sample_root):
+    resolved = resolve_and_validate("year-wrapped", repo_root, sample_root)
+    statuses = {r.scene_id: r.status for r in resolved.report.results}
+    assert statuses == {"year-in-numbers": "partial", "how-many-of-us": "supported"}
+    assert resolved.report.ok
+    text = format_report(resolved.report)
+    assert "year-in-numbers: partial" in text
+    assert "how-many-of-us: supported" in text
