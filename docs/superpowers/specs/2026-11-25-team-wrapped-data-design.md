@@ -240,6 +240,7 @@ A reusable unit in its own file, with an `id`, a `type` and `params`.
 - **Data scenes** bind to a derived dataset (a statistic, a curiosity, the contributor registry). A data scene declares `requires`: the datasets and fields it needs, and whether partial (not fully enriched) data is acceptable.
 - **Static scenes** need no data: a message, an image, a short video, a title card.
 - Scene types are folders in `web/scene-types/` (section 13). A type declares its params schema and its `requires`, so new types need no change to the core.
+- A scene file may set an optional `title`, which the player shows on the progress line (the default is the `id`).
 
 ### Script
 An ordered list of scene references, in its own file.
@@ -287,8 +288,8 @@ GSAP, vendored in `web/vendor/` together with its licence text and copied into e
 
 ### Scene types
 One folder per type in `web/scene-types/<type>/`:
-- `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`.
-- `render.js`: `export default { render(ctx) }`, where `ctx` is `{container, data, params, duration, partial, scope, period, gsap, presets}`. It returns a GSAP timeline of about `duration` seconds. It touches only `container`, and it receives the data for the scene's `requires` in the shape of the derived files (section 7.6). `partial` lists the datasets computed from incomplete data, so a renderer may label them.
+- `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`. In the first version the params schema is the list `required_params`; `validate-script` checks that each is present.
+- `render.js`: `export default { render(ctx) }`, where `ctx` is `{container, data, params, duration, partial, scope, period, gsap, presets}`. It returns a GSAP timeline of about `duration` seconds. It touches only `container`, and it receives the data for the scene's `requires` in the shape of the derived files (section 7.6). `partial` lists the datasets computed from incomplete data, so a renderer may label them. The build rewrites the single `export default` into a registry assignment and rejects `import` lines, because pages open from disk and browsers block module imports on `file://`.
 
 Initial types: `message`, `stats`, `headcount`, `curiosity`, and a media type for images and short video.
 

@@ -1,5 +1,6 @@
 # Opening scene: headline totals for the script's period and scope.
 id: year-in-numbers
+title: The year in numbers
 type: stats
 requires:
   - dataset: summary.totals

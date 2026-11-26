@@ -1,5 +1,6 @@
 # Closing scene: headcount, with the robots shown apart from the humans.
 id: how-many-of-us
+title: How many of us
 type: headcount
 requires:
   - dataset: contributors
