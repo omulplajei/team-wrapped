@@ -96,7 +96,13 @@ def test_skip_vs_fail(tmp_path):
 def test_year_wrapped_on_sample(repo_root, sample_root):
     resolved = resolve_and_validate("year-wrapped", repo_root, sample_root)
     statuses = {r.scene_id: r.status for r in resolved.report.results}
-    assert statuses == {"year-in-numbers": "partial", "how-many-of-us": "supported"}
+    assert statuses == {
+        "we-shipped": "supported",
+        "we-looked-after-each-other": "supported",
+        "we-changed-the-code": "partial",
+        "year-in-numbers": "partial",
+        "how-many-of-us": "supported",
+    }
     assert resolved.report.ok
     text = format_report(resolved.report)
     assert "year-in-numbers: partial" in text

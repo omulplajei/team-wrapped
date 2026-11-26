@@ -1,0 +1,13 @@
+id: we-changed-the-code
+title: We changed the code
+type: bignumber
+requires:
+  - dataset: delivery_volume.lines
+    fields: [total_additions, total_deletions, total_net]
+    allow_partial: true   # needs enriched commit records
+params:
+  value: delivery_volume.lines.total_net
+  label: "Net lines of change"
+  supporting:
+    - {label: "Lines added", value: delivery_volume.lines.total_additions}
+    - {label: "Lines deleted", value: delivery_volume.lines.total_deletions}

@@ -3,6 +3,10 @@ title: Year Wrapped
 period: 2026
 scope: all            # all, or a group name
 scenes:
-  - scene: year-in-numbers
+  - scene: we-shipped
+  - scene: we-looked-after-each-other
+  - scene: we-changed-the-code
+    on_missing_data: skip   # needs enriched commit data; the rest still plays without it
+  - scene: year-in-numbers  # the recap grid of all numbers
   # scenes in between are still to be explored
   - scene: how-many-of-us

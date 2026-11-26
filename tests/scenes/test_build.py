@@ -31,16 +31,23 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     assert (out / "avatars" / "ada-dev.png").is_file()
 
     payload = read_payload(result.index)
-    assert [s["id"] for s in payload["scenes"]] == ["year-in-numbers", "how-many-of-us"]
-    assert [s["duration"] for s in payload["scenes"]] == [8.0, 10.0]
-    assert payload["scenes"][0]["partial"] == ["delivery_volume.lines"]
-    assert payload["scenes"][1]["partial"] == []
-    assert payload["scenes"][0]["data"]["summary.totals"]["commits"] == 1240
+    scenes = {s["id"]: s for s in payload["scenes"]}
+    assert [s["id"] for s in payload["scenes"]] == [
+        "we-shipped", "we-looked-after-each-other", "we-changed-the-code",
+        "year-in-numbers", "how-many-of-us",
+    ]
+    assert [s["duration"] for s in payload["scenes"]] == [6.0, 6.0, 6.0, 8.0, 10.0]
+    assert scenes["we-shipped"]["partial"] == []
+    assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
+    assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
+    assert scenes["how-many-of-us"]["partial"] == []
+    assert scenes["we-shipped"]["data"]["summary.totals"]["commits"] == 1240
     assert payload["script"]["music"] is None
 
     html = result.index.read_text()
     assert 'TeamWrapped.sceneTypes["stats"]' in html
     assert 'TeamWrapped.sceneTypes["headcount"]' in html
+    assert 'TeamWrapped.sceneTypes["bignumber"]' in html
     assert 'TeamWrapped.sceneTypes["message"]' not in html   # only used types are inlined
     assert "export default" not in html
 
