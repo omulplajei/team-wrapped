@@ -154,6 +154,32 @@ Top-N records per scope. Each record holds the value, the repo and the PR or com
 ### 7.5 Capability statistics (optional)
 Not a separate family. Where `groups` is configured, every statistic above is also produced per group. With no groups, only per-repo and overall scopes are produced.
 
+### 7.6 Derived file format
+
+`aggregate` writes one JSON file per dataset family to `data/derived/<family>.json`. The files are what scenes, and any front-end, read. `data-sample/derived/` shows a worked example.
+
+```json
+{
+  "period": {"since": "2026-01-01", "until": "2026-12-31"},
+  "scopes": {
+    "all":         { "<dataset>": { ... } },
+    "group:alpha": { "<dataset>": { ... } },
+    "repo:my-repo": { "<dataset>": { ... } }
+  }
+}
+```
+
+- **Files.** `summary.json`, `delivery_volume.json`, `review_collab.json`, `curiosities.json` and `contributors.json`, plus `meta.json` (section 9).
+- **Scopes.** Keys are `all`, `group:<name>` and `repo:<name>`. `group:*` keys exist only when groups are configured. Every file has the same scope keys.
+- **Dataset names.** A dataset name `family.name` (for example `delivery_volume.lines`) resolves to `<family>.json`, then `scopes[<scope>][name]`. The `contributors` dataset has no second part, so it resolves to `scopes[<scope>]` itself.
+- **Field paths.** A field such as `total_net` is a key of the dataset object. A path such as `list.kind` means the key `kind` on the items of the list `list`. A field that is absent on some items (for example `list.login` on unlinked contributors) counts as present if any item has it.
+- **Time-bucketed datasets.** These hold one series per bucket size, keyed `day`, `week`, `month`, `quarter` or `year`. Each series is a list of `{"start": "<date>", ...fields}` entries ordered by `start`. The sample data does not exercise this shape yet, so it will be confirmed by the first scene that needs a time series.
+- **Curiosities.** A list of up to `top_n` records, each holding `value`, `repo` and a `pr_number` or `sha`, sorted by `value` descending.
+- **Paths to files.** `avatar_file` is relative to the data root (`data/` or `data-sample/`).
+- **Privacy.** Derived files never contain author emails (section 6).
+- **Metadata.** `meta.json` has no `scopes`. It holds `generated_at`, `period`, per-repo and per-metric `status`, `enrichment_coverage`, `partial_datasets` and the resolved `groups`.
+- **Partial datasets.** A dataset named in `meta.json`'s `partial_datasets` was computed from incomplete data. Scenes that set `allow_partial: false` treat it as unsupported.
+
 ## 8. Collection and multi-pass behaviour
 
 Collection is expected to take several passes because of API rate limits.
