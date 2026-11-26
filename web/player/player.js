@@ -182,8 +182,8 @@
 
   document.addEventListener("keydown", (ev) => {
     if (!state.started) return;
-    if (ev.target instanceof HTMLButtonElement) return;
     if (ev.code === "Space") {
+      if (ev.target instanceof HTMLButtonElement) return;
       ev.preventDefault();
       if (!els.end.hidden) replay();
       else setPlaying(!state.playing);
