@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <link rel="stylesheet" href="assets/player.css">
+</head>
+<body>
+  <div id="tw-stage"></div>
+
+  <div id="tw-start" class="tw-overlay">
+    <h1 id="tw-start-title">{{TITLE}}</h1>
+    <button id="tw-play-btn" type="button">Play</button>
+  </div>
+
+  <div id="tw-end" class="tw-overlay" hidden>
+    <button id="tw-replay-btn" type="button">Replay</button>
+  </div>
+
+  <div id="tw-controls">
+    <button id="tw-toggle" type="button">Pause</button>
+    <div id="tw-progress"></div>
+    <span id="tw-scene-title"></span>
+    <button id="tw-mute" type="button">Mute</button>
+  </div>
+
+  <script src="assets/vendor/gsap.min.js"></script>
+  <script src="assets/timing.js"></script>
+  <script src="assets/presets.js"></script>
+  <!--TW_DATA-->
+  <!--TW_RENDERERS-->
+  <script src="assets/player.js"></script>
+</body>
+</html>

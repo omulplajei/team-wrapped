@@ -1,0 +1,44 @@
+[hidden] { display: none !important; }
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; height: 100%; background: #0f1115; color: #f2f3f5;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+
+#tw-stage { position: fixed; inset: 0; }
+
+.tw-scene { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 2rem 2rem 5rem; text-align: center; }
+
+.tw-overlay { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2rem; background: #0f1115; }
+#tw-start-title { font-size: clamp(2rem, 6vw, 4rem); margin: 0; }
+.tw-overlay button { font-size: 1.5rem; padding: 0.8rem 2.5rem; border-radius: 999px;
+  border: 0; cursor: pointer; background: #f2f3f5; color: #0f1115; }
+
+#tw-controls { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: flex;
+  align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; background: rgba(0, 0, 0, 0.55); }
+body:not(.tw-started) #tw-controls { display: none; }
+#tw-controls button { background: transparent; color: inherit; border: 1px solid #555;
+  border-radius: 6px; padding: 0.3rem 0.8rem; cursor: pointer; min-width: 4.5rem; }
+#tw-scene-title { font-size: 0.85rem; opacity: 0.7; min-width: 9rem; }
+
+#tw-progress { flex: 1; display: flex; gap: 4px; height: 22px; cursor: pointer; touch-action: none; }
+.tw-seg { position: relative; padding: 0; border: 0; background: #3a3d44; border-radius: 3px;
+  overflow: hidden; cursor: pointer; }
+.tw-seg-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #f2f3f5; }
+.tw-seg.tw-current { outline: 2px solid #8ab4ff; }
+
+.tw-message { font-size: clamp(2rem, 7vw, 5rem); margin: 0; }
+
+.tw-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.5rem; width: min(70rem, 100%); }
+.tw-stat-value { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-stat-label { opacity: 0.75; margin-top: 0.3rem; }
+.tw-stat-partial { margin-top: 0.4rem; font-size: 0.75rem; color: #e6b450; }
+
+.tw-group { margin: 1rem 0; }
+.tw-group-count { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-group-label { opacity: 0.75; margin-bottom: 0.8rem; }
+.tw-faces { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; max-width: 60rem; }
+.tw-face { width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover; background: #3a3d44; }
