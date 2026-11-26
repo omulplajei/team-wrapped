@@ -19,7 +19,7 @@
     mute: $("tw-mute"), sceneTitle: $("tw-scene-title"),
   };
 
-  const state = { started: false, playing: false, index: 0, tl: null, el: null, scrubbing: false };
+  const state = { started: false, playing: false, index: 0, tl: null, el: null, scrubbing: false, scrubResume: false };
 
   function store(key, value) {
     try {
@@ -178,19 +178,28 @@
     const i = Number(seg.dataset.index);
     if (i === state.index && els.end.hidden) {
       state.scrubbing = true;
-      els.progress.setPointerCapture(ev.pointerId);
+      state.scrubResume = state.playing;
+      state.tl.pause();
+      try { els.progress.setPointerCapture(ev.pointerId); } catch (e) { /* no active pointer */ }
       scrubTo(ev);
     } else {
       enter(i, state.playing);
     }
   });
   els.progress.addEventListener("pointermove", (ev) => { if (state.scrubbing) scrubTo(ev); });
-  els.progress.addEventListener("pointerup", () => { state.scrubbing = false; });
+  function endScrub() {
+    if (!state.scrubbing) return;
+    state.scrubbing = false;
+    if (state.scrubResume && state.playing) state.tl.play();
+    state.scrubResume = false;
+  }
+  els.progress.addEventListener("pointerup", endScrub);
+  els.progress.addEventListener("pointercancel", endScrub);
 
   document.addEventListener("keydown", (ev) => {
     if (!state.started) return;
     if (ev.code === "Space") {
-      if (ev.target instanceof HTMLButtonElement) return;
+      if (ev.target instanceof HTMLButtonElement && !ev.target.classList.contains("tw-seg")) return;
       ev.preventDefault();
       if (!els.end.hidden) replay();
       else setPlaying(!state.playing);
