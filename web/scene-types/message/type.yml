@@ -1,0 +1,3 @@
+name: message
+default_duration: 4
+required_params: [text]

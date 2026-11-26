@@ -1,0 +1,3 @@
+name: headcount
+default_duration: 10
+required_params: [groups]
