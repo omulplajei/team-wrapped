@@ -1,0 +1,3 @@
+name: bignumber
+default_duration: 6
+required_params: [value, label]

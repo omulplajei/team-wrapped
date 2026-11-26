@@ -1,0 +1,66 @@
+export default {
+  render(ctx) {
+    const { container, data, params, partial, gsap, presets } = ctx;
+    const tl = gsap.timeline();
+
+    const wrap = document.createElement("div");
+    wrap.className = "tw-hero";
+    const value = document.createElement("div");
+    value.className = "tw-hero-value";
+    const label = document.createElement("div");
+    label.className = "tw-hero-label";
+    label.textContent = params.label;
+    wrap.append(value, label);
+
+    const hero = presets.lookup(data, params.value);
+    if (typeof hero === "number") {
+      presets.countUp(tl, value, hero, 0.3, 2.5);
+    } else {
+      value.textContent = "–";
+    }
+    if (presets.isPartial(partial, params.value)) {
+      const badge = document.createElement("div");
+      badge.className = "tw-hero-partial";
+      badge.textContent = "partial data";
+      wrap.append(badge);
+    }
+
+    const supporting = Array.isArray(params.supporting) ? params.supporting : [];
+    if (supporting.length > 0) {
+      const row = document.createElement("div");
+      row.className = "tw-hero-supporting";
+      const cards = [];
+      supporting.forEach((item, i) => {
+        const card = document.createElement("div");
+        card.className = "tw-hero-sub";
+        const subValue = document.createElement("div");
+        subValue.className = "tw-hero-sub-value";
+        const subLabel = document.createElement("div");
+        subLabel.className = "tw-hero-sub-label";
+        subLabel.textContent = item.label;
+        card.append(subValue, subLabel);
+
+        const raw = presets.lookup(data, item.value);
+        if (typeof raw === "number") {
+          presets.countUp(tl, subValue, raw, 2.8 + i * 0.2, 1.0);
+        } else {
+          subValue.textContent = "–";
+        }
+        if (presets.isPartial(partial, item.value)) {
+          const subBadge = document.createElement("div");
+          subBadge.className = "tw-hero-sub-partial";
+          subBadge.textContent = "partial data";
+          card.append(subBadge);
+        }
+        row.append(card);
+        cards.push(card);
+      });
+      wrap.append(row);
+      presets.popIn(tl, cards, 2.8, 0.2);
+    }
+
+    container.append(wrap);
+    presets.fadeIn(tl, wrap, 0, 0.6);
+    return tl;
+  },
+};
