@@ -5,6 +5,7 @@ import html
 import json
 import re
 import shutil
+import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -38,7 +39,8 @@ def transform_renderer(name: str, source: str) -> str:
         raise BuildError(f"scene type '{name}': render.js must not use import (pages open from disk)")
     if source.count("export default") != 1:
         raise BuildError(f"scene type '{name}': render.js needs exactly one 'export default'")
-    return f'TeamWrapped.sceneTypes["{name}"] = ' + source.replace("export default", "", 1)
+    body = source.replace("export default", f'TeamWrapped.sceneTypes["{name}"] =', 1)
+    return f"(function () {{\n{body}\n}})();"
 
 
 def _payload(resolved: Resolved) -> tuple[dict, list]:
@@ -79,24 +81,32 @@ def _payload(resolved: Resolved) -> tuple[dict, list]:
     return payload, skipped
 
 
-def _prepare_music(music: dict | None, data_root: Path, out_dir: Path) -> dict | None:
+def _prepare_music(music: dict | None, data_root: Path) -> tuple[dict | None, tuple[Path, str] | None]:
+    """Validate music; return (spec, (source file, real name)) with nothing written."""
     if not music:
-        return None
+        return None, None
     file = music.get("file")
     if not file:
         raise BuildError("music.file is required when music is set")
     spec = {"volume": music.get("volume", 0.5), "loop": music.get("loop", True)}
     if str(file).startswith(("http://", "https://")):
         spec["src"] = file
-        return spec
-    source = data_root / "assets" / file
+        return spec, None
+    assets = data_root / "assets"
+    if Path(str(file)).is_absolute():
+        raise BuildError(f"music file '{file}' must be relative to {assets}")
+    source = (assets / file).resolve()
+    if not source.is_relative_to(assets.resolve()):
+        raise BuildError(f"music file '{file}' must stay inside {assets}")
     if not source.is_file():
-        raise BuildError(f"music file '{file}' not found in {data_root / 'assets'}")
-    dest = out_dir / "assets" / "music"
-    dest.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, dest / source.name)
-    spec["src"] = f"assets/music/{source.name}"
-    return spec
+        raise BuildError(f"music file '{file}' not found in {assets}")
+    spec["src"] = "assets/music/" + urllib.parse.quote(source.name)
+    return spec, (source, source.name)
+
+
+def _embed_json(payload: dict) -> str:
+    text = json.dumps(payload, allow_nan=False)
+    return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
 def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
@@ -114,30 +124,42 @@ def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
     if not payload["scenes"]:
         raise BuildError("no scenes left to play after skipping unsupported ones")
 
-    out_dir = out_root / resolved.script.id
-    (out_dir / "assets").mkdir(parents=True, exist_ok=True)
-    payload["script"]["music"] = _prepare_music(resolved.script.music, data_root, out_dir)
-
-    for folder, name in _PLAYER_ASSETS:
-        shutil.copy2(web / folder / name, out_dir / "assets" / name)
-    shutil.copytree(vendor, out_dir / "assets" / "vendor", dirs_exist_ok=True)
-    if (data_root / "avatars").is_dir():
-        shutil.copytree(data_root / "avatars", out_dir / "avatars", dirs_exist_ok=True)
+    payload["script"]["music"], music_file = _prepare_music(resolved.script.music, data_root)
 
     used_types = sorted({scene["type"] for scene in payload["scenes"]})
     renderers = "\n".join(
         transform_renderer(name, (resolved.scene_types[name].dir / "render.js").read_text())
         for name in used_types
     )
-    data_tag = ('<script type="application/json" id="tw-data">'
-                + json.dumps(payload).replace("</", "<\\/") + "</script>")
+    data_tag = '<script type="application/json" id="tw-data">' + _embed_json(payload) + "</script>"
     renderer_tag = ("<script>\nwindow.TeamWrapped = window.TeamWrapped || {};\n"
                     "TeamWrapped.sceneTypes = {};\n" + renderers + "\n</script>")
+    replacements = {
+        "{{TITLE}}": html.escape(resolved.script.title),
+        "<!--TW_DATA-->": data_tag,
+        "<!--TW_RENDERERS-->": renderer_tag,
+    }
+    template = (web / "player" / "index.template.html").read_text()
+    page = re.sub("|".join(re.escape(key) for key in replacements),
+                  lambda m: replacements[m.group(0)], template)
 
-    page = (web / "player" / "index.template.html").read_text()
-    page = (page.replace("{{TITLE}}", html.escape(resolved.script.title))
-                .replace("<!--TW_DATA-->", data_tag)
-                .replace("<!--TW_RENDERERS-->", renderer_tag))
+    script_id = resolved.script.id
+    if Path(script_id).name != script_id or script_id in ("", ".", ".."):
+        raise BuildError(f"script id '{script_id}' is not a plain name")
+
+    # everything is validated: only now touch the output folder
+    out_dir = out_root / script_id
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    (out_dir / "assets").mkdir(parents=True)
+    if music_file:
+        (out_dir / "assets" / "music").mkdir()
+        shutil.copy2(music_file[0], out_dir / "assets" / "music" / music_file[1])
+    for folder, name in _PLAYER_ASSETS:
+        shutil.copy2(web / folder / name, out_dir / "assets" / name)
+    shutil.copytree(vendor, out_dir / "assets" / "vendor")
+    if (data_root / "avatars").is_dir():
+        shutil.copytree(data_root / "avatars", out_dir / "avatars")
     index = out_dir / "index.html"
     index.write_text(page)
     return BuildResult(out_dir=out_dir, index=index, skipped=skipped)

@@ -1,6 +1,7 @@
 import json
 import re
 import shutil
+import subprocess
 
 import pytest
 
@@ -95,7 +96,7 @@ def test_build_accepts_music_url_and_rejects_missing_file(repo_root, sample_root
 
 def test_transform_renderer():
     out = transform_renderer("x", "export default { render() {} };")
-    assert out.startswith('TeamWrapped.sceneTypes["x"] = ')
+    assert 'TeamWrapped.sceneTypes["x"] = ' in out
     assert "export default" not in out
     with pytest.raises(BuildError, match="must not use import"):
         transform_renderer("x", 'import a from "./a.js";\nexport default {};')
@@ -111,3 +112,134 @@ def test_cli_build(repo_root, tmp_path, capsys):
     assert code == 0
     assert (tmp_path / "dist" / "year-wrapped" / "index.html").is_file()
     assert "index.html" in capsys.readouterr().out
+
+
+needs_node = pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+
+
+def node_check(path):
+    result = subprocess.run(["node", "--check", str(path)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+@needs_node
+def test_transform_renderer_allows_code_before_export(tmp_path):
+    out = transform_renderer("x", "const fmt = (n) => n + 1;\nexport default { render() { return fmt(1); } };")
+    assert "export default" not in out
+    path = tmp_path / "x.js"
+    path.write_text("window.TeamWrapped = {sceneTypes: {}};\n" + out)
+    node_check(path)
+
+
+@needs_node
+def test_shipped_renderers_transform_to_valid_js(repo_root, tmp_path):
+    renders = sorted((repo_root / "web" / "scene-types").glob("*/render.js"))
+    assert renders
+    for render in renders:
+        path = tmp_path / f"{render.parent.name}.js"
+        path.write_text(transform_renderer(render.parent.name, render.read_text()))
+        node_check(path)
+
+
+@needs_node
+def test_renderers_do_not_share_top_level_scope(tmp_path):
+    a = transform_renderer("a", "const helper = 1;\nexport default { n: helper };")
+    b = transform_renderer("b", "const helper = 1;\nexport default { n: helper };")
+    path = tmp_path / "both.js"
+    path.write_text("window.TeamWrapped = {sceneTypes: {}};\n" + a + "\n" + b)
+    node_check(path)
+
+
+NASTY_TITLE = "</title><script>alert(1)</script>"
+NASTY_TEXT = "</script><img src=x onerror=alert(1)> <!--<script> <!--TW_RENDERERS--> {{TITLE}} \u2028 &amp;"
+
+
+def test_build_embeds_hostile_strings_safely(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "scenes").mkdir(exist_ok=True)
+    (data / "scenes" / "nasty.yml").write_text(json.dumps(
+        {"id": "nasty", "type": "message", "title": "Nasty", "params": {"text": NASTY_TEXT}}))
+    (data / "scripts").mkdir(exist_ok=True)
+    (data / "scripts" / "nasty-script.yml").write_text(json.dumps(
+        {"id": "nasty-script", "title": NASTY_TITLE, "scope": "all", "scenes": [{"scene": "nasty"}]}))
+    result = build("nasty-script", repo_root, data, tmp_path / "dist")
+    page = result.index.read_text()
+    assert "</script><img" not in page
+    assert "<!--<script>" not in page
+    assert "<!--TW_RENDERERS-->" not in page
+    assert "<!--TW_" not in page
+    assert page.count("{{TITLE}}") == 1   # only the hostile data string, never rescanned
+    assert NASTY_TITLE not in page
+    payload = read_payload(result.index)
+    assert payload["script"]["title"] == NASTY_TITLE
+    assert payload["scenes"][0]["params"]["text"] == NASTY_TEXT
+
+
+def test_sample_build_has_no_leftover_markers(repo_root, sample_root, tmp_path):
+    page = build("year-wrapped", repo_root, sample_root, tmp_path / "dist").index.read_text()
+    assert "{{" not in page
+    assert "<!--TW_" not in page
+
+
+def music_script(data, name, music_line):
+    (data / "scripts").mkdir(exist_ok=True)
+    (data / "scripts" / f"{name}.yml").write_text(
+        f"id: {name}\nscope: all\nscenes:\n  - scene: how-many-of-us\nmusic: {music_line}\n")
+
+
+def test_build_replaces_stale_output(repo_root, sample_root, tmp_path):
+    out = tmp_path / "dist" / "year-wrapped"
+    (out / "avatars").mkdir(parents=True)
+    (out / "avatars" / "old.png").write_bytes(b"x")
+    (out / "assets" / "music").mkdir(parents=True)
+    (out / "assets" / "music" / "old.mp3").write_bytes(b"x")
+    build("year-wrapped", repo_root, sample_root, tmp_path / "dist")
+    assert not (out / "avatars" / "old.png").exists()
+    assert not (out / "assets" / "music" / "old.mp3").exists()
+    assert (out / "avatars" / "ada-dev.png").is_file()
+    assert (out / "index.html").is_file()
+
+
+def test_failed_builds_leave_output_untouched(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    music_script(data, "gone", "{file: nothere.mp3}")
+    out_root = tmp_path / "dist"
+    # no pre-existing folder: none is created
+    with pytest.raises(BuildError):
+        build("gone", repo_root, data, out_root)
+    assert not (out_root / "gone").exists()
+    # pre-existing folder: untouched
+    (out_root / "gone").mkdir(parents=True)
+    (out_root / "gone" / "marker.txt").write_text("keep")
+    with pytest.raises(BuildError):
+        build("gone", repo_root, data, out_root)
+    assert (out_root / "gone" / "marker.txt").read_text() == "keep"
+    # unsupported scene
+    (data / "derived" / "delivery_volume.json").unlink()
+    (out_root / "year-wrapped").mkdir()
+    (out_root / "year-wrapped" / "marker.txt").write_text("keep")
+    with pytest.raises(BuildError):
+        build("year-wrapped", repo_root, data, out_root)
+    assert (out_root / "year-wrapped" / "marker.txt").read_text() == "keep"
+
+
+def test_music_file_must_stay_inside_assets(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "assets").mkdir()
+    (data / "evil.mp3").write_bytes(b"evil")
+    music_script(data, "evil", "{file: ../evil.mp3}")
+    music_script(data, "abs", "{file: '%s'}" % (data / "evil.mp3"))
+    for name, needle in [("evil", "evil.mp3"), ("abs", "evil.mp3")]:
+        with pytest.raises(BuildError, match=needle):
+            build(name, repo_root, data, tmp_path / "dist")
+        assert not (tmp_path / "dist" / name).exists()
+
+
+def test_music_name_is_url_encoded_in_src(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "assets").mkdir()
+    (data / "assets" / "my song #1.mp3").write_bytes(b"fake")
+    music_script(data, "odd", "{file: 'my song #1.mp3'}")
+    result = build("odd", repo_root, data, tmp_path / "dist")
+    assert read_payload(result.index)["script"]["music"]["src"] == "assets/music/my%20song%20%231.mp3"
+    assert (tmp_path / "dist" / "odd" / "assets" / "music" / "my song #1.mp3").read_bytes() == b"fake"
