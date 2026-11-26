@@ -31,6 +31,7 @@
 
   // ---- music ---------------------------------------------------------
   let audio = null;
+  let fadeTween = null;
   if (music) {
     audio = new Audio(music.src);
     audio.loop = music.loop !== false;
@@ -43,7 +44,13 @@
   function playAudio() {
     if (!audio) return;
     audio.play().catch(() => {});
-    gsap.to(audio, { volume: music.volume != null ? music.volume : 0.5, duration: 2, overwrite: true });
+    if (fadeTween) fadeTween.kill();
+    const fade = { v: audio.volume };
+    fadeTween = gsap.to(fade, {
+      v: music.volume != null ? music.volume : 0.5,
+      duration: 2,
+      onUpdate: () => { audio.volume = fade.v; },
+    });
   }
   function pauseAudio() { if (audio) audio.pause(); }
   function toggleMute() {
