@@ -106,7 +106,13 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
     assert resolved.report.ok
     text = format_report(resolved.report)
     assert "year-in-numbers: partial" in text
+    assert "we-changed-the-code: partial" in text
     assert "how-many-of-us: supported" in text
+
+
+def test_top_level_value_is_a_literal_for_types_that_do_not_require_it(tmp_path):
+    report = run(tmp_path, REQ, params={"value": "a caption", "items": []})
+    assert report.results[0].status == "supported"
 
 
 def test_bignumber_refs_resolve(tmp_path):

@@ -288,7 +288,7 @@ GSAP, vendored in `web/vendor/` together with its licence text and copied into e
 
 ### Scene types
 One folder per type in `web/scene-types/<type>/`:
-- `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`. In the first version the params schema is the list `required_params`; `validate-script` checks that each is present.
+- `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`. In the first version the params schema is the list `required_params`; `validate-script` checks that each is present. Params named `items` and `supporting` carry `{label, value}` pairs whose `value` is a data reference, and a top-level `value` param is a data reference only for types that list it in `required_params`; `validate-script` checks that each reference resolves to a number.
 - `render.js`: `export default { render(ctx) }`, where `ctx` is `{container, data, params, duration, partial, scope, period, gsap, presets}`. It returns a GSAP timeline of about `duration` seconds. It touches only `container`, and it receives the data for the scene's `requires` in the shape of the derived files (section 7.6). `partial` lists the datasets computed from incomplete data, so a renderer may label them. The build rewrites the single `export default` into a registry assignment and rejects `import` lines, because pages open from disk and browsers block module imports on `file://`.
 
 Initial types: `message`, `stats`, `bignumber` (one hero number with optional supporting figures), `headcount`, `curiosity`, and a media type for images and short video.

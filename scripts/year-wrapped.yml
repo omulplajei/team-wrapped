@@ -6,7 +6,8 @@ scenes:
   - scene: we-shipped
   - scene: we-looked-after-each-other
   - scene: we-changed-the-code
-    on_missing_data: skip   # needs enriched commit data; the rest still plays without it
+    on_missing_data: skip   # needs enriched line data; the rest still plays without it
   - scene: year-in-numbers  # the recap grid of all numbers
-  # scenes in between are still to be explored
+    on_missing_data: skip   # also needs enriched line data; the rest still plays without it
+  # more scenes can be added between the recap and the headcount
   - scene: how-many-of-us

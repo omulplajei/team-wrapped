@@ -52,9 +52,18 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     assert "export default" not in html
 
 
-def test_build_fails_when_a_scene_is_unsupported(repo_root, sample_root, tmp_path):
+def test_build_skips_both_line_data_scenes_when_lines_are_missing(repo_root, sample_root, tmp_path):
     data = sample_copy(sample_root, tmp_path)
     (data / "derived" / "delivery_volume.json").unlink()
+    result = build("year-wrapped", repo_root, data, tmp_path / "dist")
+    assert result.skipped == ["we-changed-the-code", "year-in-numbers"]
+    assert [s["id"] for s in read_payload(result.index)["scenes"]] == [
+        "we-shipped", "we-looked-after-each-other", "how-many-of-us"]
+
+
+def test_build_fails_when_a_scene_is_unsupported(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "derived" / "summary.json").unlink()
     with pytest.raises(BuildError) as error:
         build("year-wrapped", repo_root, data, tmp_path / "dist")
     assert error.value.report is not None
@@ -222,7 +231,7 @@ def test_failed_builds_leave_output_untouched(repo_root, sample_root, tmp_path):
         build("gone", repo_root, data, out_root)
     assert (out_root / "gone" / "marker.txt").read_text() == "keep"
     # unsupported scene
-    (data / "derived" / "delivery_volume.json").unlink()
+    (data / "derived" / "summary.json").unlink()
     (out_root / "year-wrapped").mkdir()
     (out_root / "year-wrapped" / "marker.txt").write_text("keep")
     with pytest.raises(BuildError):

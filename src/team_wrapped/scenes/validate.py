@@ -10,10 +10,11 @@ from .loader import Scene, Script, load_scene, load_script
 from .scene_types import SceneType, load_scene_types
 
 
-def _value_refs(params: dict) -> list[str]:
-    """Every data reference a scene's params carry: value, items[].value, supporting[].value."""
+def _value_refs(params: dict, include_top_level_value: bool) -> list[str]:
+    """Data references in a scene's params: items[].value and supporting[].value, plus the
+    top-level value when the scene type declares it as a required (reference) param."""
     refs = []
-    if isinstance(params.get("value"), str):
+    if include_top_level_value and isinstance(params.get("value"), str):
         refs.append(params["value"])
     for key in ("items", "supporting"):
         entries = params.get(key)
@@ -89,7 +90,8 @@ def validate_script(script: Script, scenes: dict, derived: DerivedData,
                 else:
                     problems.append(f"'{name}' is partial but this scene does not allow partial data")
 
-        for ref in _value_refs(scene.params):
+        top_level = stype is not None and "value" in stype.required_params
+        for ref in _value_refs(scene.params, top_level):
             value = resolve_ref(datasets, ref)
             if value is None:
                 problems.append(f"value '{ref}' does not resolve to required data")
