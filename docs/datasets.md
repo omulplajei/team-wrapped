@@ -13,6 +13,7 @@ Metric: any. Not time-bucketed.
 |---|---|
 | `total` | all contributors |
 | `by_kind` | counts of `human`, `bot`, `unlinked` |
+| `list[].login` | GitHub login; absent for `unlinked` contributors |
 | `list[].avatar_file` | local avatar path (placeholder for unlinked) |
 | `list[].kind` | `human`, `bot` or `unlinked` |
 | `list[].first_activity`, `last_activity` | dates |
@@ -21,7 +22,7 @@ Metric: any. Not time-bucketed.
 | Dataset | Fields | Metric | Enriched |
 |---|---|---|---|
 | `delivery_volume.commits` | `count`, `merge_count`, `non_merge_count` per bucket | commits | no |
-| `delivery_volume.lines` | `additions`, `deletions`, `net`, `files_changed` per bucket | commits | yes |
+| `delivery_volume.lines` | `additions`, `deletions`, `net`, `files_changed` per bucket; `total_additions`, `total_deletions`, `total_net` for the window | commits | yes |
 | `delivery_volume.prs` | `opened`, `merged` per bucket | pull_requests | no |
 | `delivery_volume.pr_size` | distribution of `lines_changed`, `files_changed`, `commit_count` for merged PRs | pull_requests | yes |
 

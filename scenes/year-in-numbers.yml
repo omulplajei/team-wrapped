@@ -1,0 +1,19 @@
+# Opening scene: headline totals for the script's period and scope.
+id: year-in-numbers
+type: stats
+requires:
+  - dataset: summary.totals
+    fields: [commits, merged_prs, reviews, comments]
+    allow_partial: false
+  - dataset: delivery_volume.lines
+    fields: [total_additions, total_deletions, total_net]
+    allow_partial: true   # needs enriched commit records
+params:
+  items:
+    - {label: "Commits", value: summary.totals.commits}
+    - {label: "Merged pull requests", value: summary.totals.merged_prs}
+    - {label: "Reviews", value: summary.totals.reviews}
+    - {label: "Comments", value: summary.totals.comments}
+    - {label: "Lines added", value: delivery_volume.lines.total_additions}
+    - {label: "Lines deleted", value: delivery_volume.lines.total_deletions}
+    - {label: "Net lines of change", value: delivery_volume.lines.total_net}

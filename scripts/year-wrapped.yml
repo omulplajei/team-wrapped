@@ -3,7 +3,6 @@ title: Year Wrapped
 period: 2026
 scope: all            # all, or a group name
 scenes:
-  - scene: welcome
-  - scene: contributor-count
-  - scene: biggest-pr
-    on_missing_data: skip   # skip or fail
+  - scene: year-in-numbers
+  # scenes in between are still to be explored
+  - scene: how-many-of-us

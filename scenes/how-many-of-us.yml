@@ -1,0 +1,13 @@
+# Closing scene: headcount, with the robots shown apart from the humans.
+id: how-many-of-us
+type: headcount
+requires:
+  - dataset: contributors
+    fields: [by_kind, list.kind, list.login, list.avatar_file]
+    allow_partial: false
+params:
+  groups:
+    - label: "Humans"
+      kinds: [human, unlinked]
+    - label: "Robots"
+      kinds: [bot]
