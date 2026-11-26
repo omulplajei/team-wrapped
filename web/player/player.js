@@ -148,14 +148,21 @@
 
   // ---- events --------------------------------------------------------
   els.playBtn.addEventListener("click", start);
-  els.replayBtn.addEventListener("click", () => { enter(0, true); playAudio(); });
-  els.toggle.addEventListener("click", () => setPlaying(!state.playing));
-  els.mute.addEventListener("click", toggleMute);
+  function replay() { enter(0, true); playAudio(); }
+  els.replayBtn.addEventListener("click", replay);
+  els.toggle.addEventListener("click", (ev) => {
+    setPlaying(!state.playing);
+    if (ev.detail > 0) els.toggle.blur();
+  });
+  els.mute.addEventListener("click", (ev) => {
+    toggleMute();
+    if (ev.detail > 0) els.mute.blur();
+  });
 
   function scrubTo(ev) {
     const rect = segs[state.index].seg.getBoundingClientRect();
     const f = Math.min(Math.max((ev.clientX - rect.left) / rect.width, 0), 1);
-    state.tl.progress(f);
+    state.tl.progress(Math.min(f, 0.999));
   }
 
   els.progress.addEventListener("pointerdown", (ev) => {
@@ -175,7 +182,12 @@
 
   document.addEventListener("keydown", (ev) => {
     if (!state.started) return;
-    if (ev.code === "Space") { ev.preventDefault(); setPlaying(!state.playing); }
+    if (ev.target instanceof HTMLButtonElement) return;
+    if (ev.code === "Space") {
+      ev.preventDefault();
+      if (!els.end.hidden) replay();
+      else setPlaying(!state.playing);
+    }
     else if (ev.code === "ArrowRight") enter(Math.min(state.index + 1, scenes.length - 1), state.playing);
     else if (ev.code === "ArrowLeft") enter(Math.max(state.index - 1, 0), state.playing);
     else if (ev.key === "m" || ev.key === "M") toggleMute();
