@@ -1,0 +1,9 @@
+id: year-wrapped
+title: Year Wrapped
+period: 2026
+scope: all            # all, or a group name
+scenes:
+  - scene: welcome
+  - scene: contributor-count
+  - scene: biggest-pr
+    on_missing_data: skip   # skip or fail

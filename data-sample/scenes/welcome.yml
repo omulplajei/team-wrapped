@@ -1,0 +1,5 @@
+# Static scene: needs no data.
+id: welcome
+type: message
+params:
+  text: "Our year in review"

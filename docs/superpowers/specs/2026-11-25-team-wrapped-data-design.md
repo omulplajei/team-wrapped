@@ -193,7 +193,39 @@ Read by a front-end to show freshness and gaps.
 - End-to-end test: `aggregate` on `data-sample/` compared with a snapshot, which also keeps the sample valid.
 - CI check: fails if `data/` or any file containing real repo names is tracked.
 
-## 12. Out of scope (for now)
+## 12. Scenes and scripts
+
+The wrap is built from **scenes** linked together by **scripts**. This layer defines *what* is shown and in what order. It says nothing about how it looks, which stays out of scope.
+
+### Scene
+A reusable unit in its own file, with an `id`, a `type` and `params`.
+- **Data scenes** bind to a derived dataset (a statistic, a curiosity, the contributor registry). A data scene declares `requires`: the datasets and fields it needs, and whether partial (not fully enriched) data is acceptable.
+- **Static scenes** need no data: a message, an image, a short video, a title card.
+- Scene types are plugins in `src/team_wrapped/scenes/`. A type declares its params schema and its `requires`, so new types need no change to the core.
+
+### Script
+An ordered list of scene references, in its own file.
+- `id`, `title`, `period` (for example the year 2026) and a default scope (all repos, or a group)
+- each entry is a scene `id` with optional overrides (scope, period, params)
+- each entry sets `on_missing_data`: `skip` or `fail`
+- The Year Wrapped is one script. Any number of scripts can exist, and one scene can be used by several.
+
+### Validation
+`validate-script <script>` resolves every scene and reports:
+- the datasets and fields the script needs, as a list that feeds back into this spec
+- per scene: **supported**, **partial**, or **unsupported** by the data
+
+It runs against `data-sample/` before any real collection, and later against the real `data/derived/meta.json`, where it also shows which scenes would be skipped.
+
+### Layout
+```
+src/team_wrapped/scenes/   # scene type plugins (generic, public)
+data-sample/scenes/        # sample scene definitions
+data-sample/scripts/       # sample script: year-wrapped.yml
+data/scenes/, data/scripts/  # private, git-ignored
+```
+
+## 13. Out of scope (for now)
 
 - Presentation and front-end
 - Delivery speed (time to merge, time to first review), contributor footprint statistics and repo comparison tables. They can be added later as aggregate modules because the raw data already supports them

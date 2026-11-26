@@ -1,0 +1,8 @@
+id: biggest-pr
+type: curiosity
+requires:
+  - dataset: curiosities.biggest_pr_by_lines
+    fields: [value, repo, pr_number]
+    allow_partial: true   # depends on enriched PR records
+params:
+  label: "Biggest pull request"

@@ -1,0 +1,9 @@
+# Data scene: declares the datasets and fields it needs.
+id: contributor-count
+type: stat
+requires:
+  - dataset: contributors
+    fields: [total, by_kind]
+    allow_partial: false
+params:
+  label: "Contributors"
