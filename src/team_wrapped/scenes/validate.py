@@ -10,6 +10,20 @@ from .loader import Scene, Script, load_scene, load_script
 from .scene_types import SceneType, load_scene_types
 
 
+def _value_refs(params: dict) -> list[str]:
+    """Every data reference a scene's params carry: value, items[].value, supporting[].value."""
+    refs = []
+    if isinstance(params.get("value"), str):
+        refs.append(params["value"])
+    for key in ("items", "supporting"):
+        entries = params.get(key)
+        if isinstance(entries, list):
+            for entry in entries:
+                if isinstance(entry, dict) and isinstance(entry.get("value"), str):
+                    refs.append(entry["value"])
+    return refs
+
+
 @dataclass
 class SceneResult:
     scene_id: str
@@ -75,10 +89,12 @@ def validate_script(script: Script, scenes: dict, derived: DerivedData,
                 else:
                     problems.append(f"'{name}' is partial but this scene does not allow partial data")
 
-        for item in scene.params.get("items", []):
-            ref = item.get("value") if isinstance(item, dict) else None
-            if ref is not None and resolve_ref(datasets, ref) is None:
+        for ref in _value_refs(scene.params):
+            value = resolve_ref(datasets, ref)
+            if value is None:
                 problems.append(f"value '{ref}' does not resolve to required data")
+            elif isinstance(value, bool) or not isinstance(value, (int, float)):
+                problems.append(f"value '{ref}' is not a number")
 
         status = "unsupported" if problems else ("partial" if partial else "supported")
         results.append(SceneResult(

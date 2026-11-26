@@ -6,7 +6,10 @@ from team_wrapped.scenes.loader import Entry, Scene, Script
 from team_wrapped.scenes.scene_types import SceneType
 from team_wrapped.scenes.validate import format_report, resolve_and_validate, validate_script
 
-TYPES = {"stats": SceneType("stats", 8.0, ["items"], Path("."))}
+TYPES = {
+    "stats": SceneType("stats", 8.0, ["items"], Path(".")),
+    "bignumber": SceneType("bignumber", 6.0, ["value", "label"], Path(".")),
+}
 CATALOG = {"summary.totals", "contributors"}
 
 
@@ -98,3 +101,34 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
     text = format_report(resolved.report)
     assert "year-in-numbers: partial" in text
     assert "how-many-of-us: supported" in text
+
+
+def test_bignumber_refs_resolve(tmp_path):
+    params = {"value": "summary.totals.commits", "label": "Commits",
+              "supporting": [{"label": "Same", "value": "summary.totals.commits"}]}
+    report = run(tmp_path, REQ, params=params, type_="bignumber")
+    assert report.results[0].status == "supported"
+
+
+def test_bignumber_unresolved_hero_and_supporting(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    bad_hero = {"value": "summary.totals.nope", "label": "X"}
+    report = run(tmp_path / "a", REQ, params=bad_hero, type_="bignumber")
+    assert "value 'summary.totals.nope' does not resolve to required data" in report.results[0].problems
+    bad_sub = {"value": "summary.totals.commits", "label": "X",
+               "supporting": [{"label": "Y", "value": "summary.totals.nope"}]}
+    report = run(tmp_path / "b", REQ, params=bad_sub, type_="bignumber")
+    assert "value 'summary.totals.nope' does not resolve to required data" in report.results[0].problems
+
+
+def test_value_must_be_a_number(tmp_path):
+    params = {"items": [{"label": "C", "value": "summary.totals"}]}   # a whole dataset, not a number
+    report = run(tmp_path, REQ, params=params)
+    assert "value 'summary.totals' is not a number" in report.results[0].problems
+    assert report.results[0].status == "unsupported"
+
+
+def test_bignumber_requires_value_and_label(tmp_path):
+    report = run(tmp_path, REQ, params={"value": "summary.totals.commits"}, type_="bignumber")
+    assert "missing required param 'label'" in report.results[0].problems
