@@ -1,0 +1,24 @@
+{
+  "period": {
+    "since": "2026-01-01",
+    "until": "2026-12-31"
+  },
+  "scopes": {
+    "all": {
+      "totals": {
+        "commits": 1240,
+        "merged_prs": 310,
+        "reviews": 540,
+        "comments": 1180
+      }
+    },
+    "group:alpha": {
+      "totals": {
+        "commits": 820,
+        "merged_prs": 205,
+        "reviews": 360,
+        "comments": 790
+      }
+    }
+  }
+}

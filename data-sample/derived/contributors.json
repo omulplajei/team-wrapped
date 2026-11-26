@@ -1,0 +1,377 @@
+{
+  "period": {
+    "since": "2026-01-01",
+    "until": "2026-12-31"
+  },
+  "scopes": {
+    "all": {
+      "total": 13,
+      "by_kind": {
+        "human": 8,
+        "unlinked": 2,
+        "bot": 3
+      },
+      "list": [
+        {
+          "id": "c001",
+          "login": "ada-dev",
+          "kind": "human",
+          "avatar_file": "avatars/ada-dev.png",
+          "repos": [
+            "sample-api",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-01-10",
+          "last_activity": "2026-10-21"
+        },
+        {
+          "id": "c002",
+          "login": "grace-codes",
+          "kind": "human",
+          "avatar_file": "avatars/grace-codes.png",
+          "repos": [
+            "sample-api",
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-02-11",
+          "last_activity": "2026-11-22"
+        },
+        {
+          "id": "c003",
+          "login": "linus-sample",
+          "kind": "human",
+          "avatar_file": "avatars/linus-sample.png",
+          "repos": [
+            "sample-api",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-03-12",
+          "last_activity": "2026-12-23"
+        },
+        {
+          "id": "c004",
+          "login": "margaret-h",
+          "kind": "human",
+          "avatar_file": "avatars/margaret-h.png",
+          "repos": [
+            "sample-api",
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-04-13",
+          "last_activity": "2026-10-24"
+        },
+        {
+          "id": "c005",
+          "login": "alan-t",
+          "kind": "human",
+          "avatar_file": "avatars/alan-t.png",
+          "repos": [
+            "sample-api",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-05-14",
+          "last_activity": "2026-11-25"
+        },
+        {
+          "id": "c006",
+          "login": "barbara-l",
+          "kind": "human",
+          "avatar_file": "avatars/barbara-l.png",
+          "repos": [
+            "sample-api",
+            "sample-web"
+          ],
+          "groups": [
+            "beta"
+          ],
+          "first_activity": "2026-06-15",
+          "last_activity": "2026-12-26"
+        },
+        {
+          "id": "c007",
+          "login": "dennis-r",
+          "kind": "human",
+          "avatar_file": "avatars/dennis-r.png",
+          "repos": [
+            "sample-api",
+            "sample-docs"
+          ],
+          "groups": [
+            "beta"
+          ],
+          "first_activity": "2026-01-16",
+          "last_activity": "2026-10-27"
+        },
+        {
+          "id": "c008",
+          "login": "ken-t",
+          "kind": "human",
+          "avatar_file": "avatars/ken-t.png",
+          "repos": [
+            "sample-api",
+            "sample-web"
+          ],
+          "groups": [
+            "beta"
+          ],
+          "first_activity": "2026-02-17",
+          "last_activity": "2026-11-28"
+        },
+        {
+          "id": "c009",
+          "kind": "unlinked",
+          "avatar_file": "avatars/placeholder.png",
+          "repos": [
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-03-05",
+          "last_activity": "2026-03-05"
+        },
+        {
+          "id": "c010",
+          "kind": "unlinked",
+          "avatar_file": "avatars/placeholder.png",
+          "repos": [
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-03-05",
+          "last_activity": "2026-03-05"
+        },
+        {
+          "id": "c011",
+          "login": "dependabot[bot]",
+          "kind": "bot",
+          "avatar_file": "avatars/dependabot_bot.png",
+          "repos": [
+            "sample-api",
+            "sample-web",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha",
+            "beta"
+          ],
+          "first_activity": "2026-01-02",
+          "last_activity": "2026-12-20"
+        },
+        {
+          "id": "c012",
+          "login": "renovate[bot]",
+          "kind": "bot",
+          "avatar_file": "avatars/renovate_bot.png",
+          "repos": [
+            "sample-api",
+            "sample-web",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha",
+            "beta"
+          ],
+          "first_activity": "2026-01-02",
+          "last_activity": "2026-12-20"
+        },
+        {
+          "id": "c013",
+          "login": "release-robot[bot]",
+          "kind": "bot",
+          "avatar_file": "avatars/release-robot_bot.png",
+          "repos": [
+            "sample-api",
+            "sample-web",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha",
+            "beta"
+          ],
+          "first_activity": "2026-01-02",
+          "last_activity": "2026-12-20"
+        }
+      ]
+    },
+    "group:alpha": {
+      "total": 10,
+      "by_kind": {
+        "human": 5,
+        "unlinked": 2,
+        "bot": 3
+      },
+      "list": [
+        {
+          "id": "c001",
+          "login": "ada-dev",
+          "kind": "human",
+          "avatar_file": "avatars/ada-dev.png",
+          "repos": [
+            "sample-api",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-01-10",
+          "last_activity": "2026-10-21"
+        },
+        {
+          "id": "c002",
+          "login": "grace-codes",
+          "kind": "human",
+          "avatar_file": "avatars/grace-codes.png",
+          "repos": [
+            "sample-api",
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-02-11",
+          "last_activity": "2026-11-22"
+        },
+        {
+          "id": "c003",
+          "login": "linus-sample",
+          "kind": "human",
+          "avatar_file": "avatars/linus-sample.png",
+          "repos": [
+            "sample-api",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-03-12",
+          "last_activity": "2026-12-23"
+        },
+        {
+          "id": "c004",
+          "login": "margaret-h",
+          "kind": "human",
+          "avatar_file": "avatars/margaret-h.png",
+          "repos": [
+            "sample-api",
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-04-13",
+          "last_activity": "2026-10-24"
+        },
+        {
+          "id": "c005",
+          "login": "alan-t",
+          "kind": "human",
+          "avatar_file": "avatars/alan-t.png",
+          "repos": [
+            "sample-api",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-05-14",
+          "last_activity": "2026-11-25"
+        },
+        {
+          "id": "c009",
+          "kind": "unlinked",
+          "avatar_file": "avatars/placeholder.png",
+          "repos": [
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-03-05",
+          "last_activity": "2026-03-05"
+        },
+        {
+          "id": "c010",
+          "kind": "unlinked",
+          "avatar_file": "avatars/placeholder.png",
+          "repos": [
+            "sample-web"
+          ],
+          "groups": [
+            "alpha"
+          ],
+          "first_activity": "2026-03-05",
+          "last_activity": "2026-03-05"
+        },
+        {
+          "id": "c011",
+          "login": "dependabot[bot]",
+          "kind": "bot",
+          "avatar_file": "avatars/dependabot_bot.png",
+          "repos": [
+            "sample-api",
+            "sample-web",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha",
+            "beta"
+          ],
+          "first_activity": "2026-01-02",
+          "last_activity": "2026-12-20"
+        },
+        {
+          "id": "c012",
+          "login": "renovate[bot]",
+          "kind": "bot",
+          "avatar_file": "avatars/renovate_bot.png",
+          "repos": [
+            "sample-api",
+            "sample-web",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha",
+            "beta"
+          ],
+          "first_activity": "2026-01-02",
+          "last_activity": "2026-12-20"
+        },
+        {
+          "id": "c013",
+          "login": "release-robot[bot]",
+          "kind": "bot",
+          "avatar_file": "avatars/release-robot_bot.png",
+          "repos": [
+            "sample-api",
+            "sample-web",
+            "sample-docs"
+          ],
+          "groups": [
+            "alpha",
+            "beta"
+          ],
+          "first_activity": "2026-01-02",
+          "last_activity": "2026-12-20"
+        }
+      ]
+    }
+  }
+}

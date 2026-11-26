@@ -1,0 +1,22 @@
+{
+  "period": {
+    "since": "2026-01-01",
+    "until": "2026-12-31"
+  },
+  "scopes": {
+    "all": {
+      "lines": {
+        "total_additions": 48200,
+        "total_deletions": 21350,
+        "total_net": 26850
+      }
+    },
+    "group:alpha": {
+      "lines": {
+        "total_additions": 31900,
+        "total_deletions": 13800,
+        "total_net": 18100
+      }
+    }
+  }
+}
