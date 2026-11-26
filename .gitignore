@@ -1,2 +1,3 @@
 # Private data: config, raw and derived data, avatars, scenes, scripts
 /data/
+/dist/

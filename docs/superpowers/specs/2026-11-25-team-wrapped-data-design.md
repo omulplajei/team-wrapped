@@ -2,7 +2,7 @@
 
 Date: 2026-11-25
 Status: draft, pending review
-Scope of this document: **data only** (what is collected, stored and derived). Presentation is out of scope.
+Scope of this document: what is collected, stored and derived (sections 1 to 11), how scenes and scripts are defined (section 12), and how a script is played in a web page (section 13). Visual design details (colours, typography, layouts) are not specified here.
 
 ## 1. Purpose
 
@@ -41,9 +41,15 @@ team-wrapped/
     aggregate/            # one module per statistic family
       delivery_volume.py  review_collab.py  summary.py  curiosities.py
     metadata.py           # builds data/derived/meta.json
-    scenes/               # scene type plugins
+    scenes/               # script loading, validate-script, build
+  web/                    # front-end (public)
+    player/               # page template, playback controller, controls, styles
+    scene-types/          # one folder per scene type: type.yml + render.js
+    presets/              # shared animation presets
+    vendor/               # vendored GSAP, with its licence text
   scenes/                 # shared scene definitions (public)
   scripts/                # shared scripts (public), for example year-wrapped
+  dist/                   # GIT-IGNORED: built pages, one folder per script
   data/                   # GIT-IGNORED: config.yml, raw/, derived/, avatars/,
                           #   scenes/ and scripts/ (private), assets/
   data-sample/            # dummy data only: config, raw records, derived output
@@ -53,7 +59,7 @@ team-wrapped/
     superpowers/specs/
 ```
 
-`.gitignore` contains `data/`. A CI check fails if anything under `data/` is tracked.
+`.gitignore` contains `data/` and `dist/` (built pages embed real data). A CI check fails if anything under `data/` or `dist/` is tracked.
 
 ## 4. Configuration (`data/config.yml`)
 
@@ -227,13 +233,13 @@ Read by a front-end to show freshness and gaps.
 
 ## 12. Scenes and scripts
 
-The wrap is built from **scenes** linked together by **scripts**. This layer defines *what* is shown and in what order. It says nothing about how it looks, which stays out of scope.
+The wrap is built from **scenes** linked together by **scripts**. This layer defines *what* is shown and in what order. How it is played and animated is in section 13.
 
 ### Scene
 A reusable unit in its own file, with an `id`, a `type` and `params`.
 - **Data scenes** bind to a derived dataset (a statistic, a curiosity, the contributor registry). A data scene declares `requires`: the datasets and fields it needs, and whether partial (not fully enriched) data is acceptable.
 - **Static scenes** need no data: a message, an image, a short video, a title card.
-- Scene types are plugins in `src/team_wrapped/scenes/`. A type declares its params schema and its `requires`, so new types need no change to the core.
+- Scene types are folders in `web/scene-types/` (section 13). A type declares its params schema and its `requires`, so new types need no change to the core.
 
 ### Script
 An ordered list of scene references, in its own file.
@@ -260,15 +266,66 @@ Scenes and generic scripts are meant to be shared. They live in the public repo 
 
 ### Layout
 ```
-src/team_wrapped/scenes/     # scene type plugins
+web/scene-types/             # scene types (section 13)
 scenes/, scripts/            # shared definitions (public)
 data/scenes/, data/scripts/  # private definitions (git-ignored)
 data-sample/                 # dummy data used to validate the shared scenes
 ```
 
-## 13. Out of scope (for now)
+## 13. Presentation: playing a script
 
-- Presentation and front-end
+A script is played in a self-contained HTML page. The page has a Play button. Playing runs the scenes in order, it can be paused, a progress line lets the viewer jump to a scene, background music plays and can be muted, and scenes are animated.
+
+### Animation engine
+GSAP, vendored in `web/vendor/` together with its licence text and copied into each built page, so pages work offline. The maintainer confirms the current GSAP licence terms before the first public release.
+
+### Timeline model
+- Each scene produces one GSAP **timeline**: it can start, pause, resume and seek.
+- The player controller holds the ordered scene list and each scene's duration. It builds a scene's timeline when the scene is entered and discards it when the scene is left. Durations are known up front, so the overall progress is the sum of the earlier scenes plus the current timeline's progress.
+- **Duration.** A scene type declares a default duration in `type.yml`. A script entry can override it. A video scene declares its duration in its scene file.
+- **Transitions.** The controller plays a transition preset between scenes. A script sets a default transition and an entry can override it. Scenes do not animate their own entry and exit.
+
+### Scene types
+One folder per type in `web/scene-types/<type>/`:
+- `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`.
+- `render.js`: `export default { render(ctx) }`, where `ctx` is `{container, data, params, duration, partial, scope, period, gsap, presets}`. It returns a GSAP timeline of about `duration` seconds. It touches only `container`, and it receives the data for the scene's `requires` in the shape of the derived files (section 7.6). `partial` lists the datasets computed from incomplete data, so a renderer may label them.
+
+Initial types: `message`, `stats`, `headcount`, `curiosity`, and a media type for images and short video.
+
+### Animation presets
+`web/presets/` holds shared building blocks for renderers and transitions: fade, slide, scale-in, count-up numbers, staggered lists and pop-in avatars. New presets are added here, and any renderer can use them.
+
+### Controls
+- **Start screen** with a Play button. The click is also what lets the browser start audio.
+- **Control bar:** play/pause, a progress line, a mute button.
+- **Progress line.** It has one segment per scene, sized by duration, with the scene title on hover. Clicking a segment jumps to the start of that scene. The current scene is highlighted. Dragging within the current scene scrubs the timeline.
+- **Jumping.** The controller discards the current timeline, builds the target scene at its start and keeps the playing or paused state.
+- **Keyboard.** Space toggles play and pause, left and right arrows move between scenes, and `M` toggles mute.
+- **End.** After the last scene the page shows a replay option.
+
+### Music
+- A script names one track: `music: {file, volume, loop}`, with the file in `data/assets/` or a URL. It fades in on Play and loops.
+- The mute button toggles it, and the choice is remembered in the browser.
+- Music pauses and resumes with the script, and is not interrupted by jumping between scenes.
+- Music files are never committed to the public repo (licensing). They are referenced from `data/assets/`.
+
+### Build
+`team-wrapped build <script> [--data data|data-sample]`:
+1. Runs script validation. Scenes that are unsupported and set `on_missing_data: fail` stop the build. Those set to `skip` are left out and listed in the output.
+2. Resolves each scene's data slice for the script's scope and period.
+3. Writes `dist/<script-id>/index.html`: the player, the scene list and only the data each scene needs, embedded as JSON, so the page opens from disk without a server.
+4. Copies avatars and media next to it in `dist/<script-id>/assets/`.
+
+A page built from `data/` contains real data and is private. A page built with `--data data-sample` can be shared as a demo.
+
+### Testing
+- `build` runs on `data-sample` in CI and must succeed for every shared script.
+- A headless-browser smoke test loads the built page, clicks Play, pauses, jumps to the last scene through the progress line and toggles mute, and fails on any console error.
+- Renderers are tested by building a timeline on sample data and checking that its duration matches the scene's duration.
+
+## 14. Out of scope (for now)
+
+- Visual design details (colours, typography, layouts), which come with the first renderers
 - Delivery speed (time to merge, time to first review), contributor footprint statistics and repo comparison tables. They can be added later as aggregate modules because the raw data already supports them
 - Issues, releases and CI workflow metrics (the plugin interface allows them later)
 - Per-person leaderboards
