@@ -243,3 +243,64 @@ def test_music_name_is_url_encoded_in_src(repo_root, sample_root, tmp_path):
     result = build("odd", repo_root, data, tmp_path / "dist")
     assert read_payload(result.index)["script"]["music"]["src"] == "assets/music/my%20song%20%231.mp3"
     assert (tmp_path / "dist" / "odd" / "assets" / "music" / "my song #1.mp3").read_bytes() == b"fake"
+
+
+def plain_script(data, name, scope, scene):
+    (data / "scripts").mkdir(exist_ok=True)
+    (data / "scripts" / f"{name}.yml").write_text(
+        f"id: {name}\nscope: {scope}\nscenes:\n  - scene: {scene}\n")
+
+
+def test_build_copies_only_referenced_avatars(repo_root, sample_root, tmp_path):
+    build("year-wrapped", repo_root, sample_root, tmp_path / "dist")
+    out = tmp_path / "dist" / "year-wrapped"
+    assert (out / "avatars" / "ada-dev.png").is_file()
+    assert (out / "avatars" / "placeholder.png").is_file()
+
+    data = sample_copy(sample_root, tmp_path)
+    plain_script(data, "alpha-only", "alpha", "how-many-of-us")
+    build("alpha-only", repo_root, data, tmp_path / "dist2")
+    out = tmp_path / "dist2" / "alpha-only"
+    assert (out / "avatars" / "ada-dev.png").is_file()
+    assert not (out / "avatars" / "ken-t.png").exists()
+
+
+def test_build_without_avatar_scenes_has_no_avatars_folder(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    plain_script(data, "nums", "all", "year-in-numbers")
+    build("nums", repo_root, data, tmp_path / "dist")
+    assert not (tmp_path / "dist" / "nums" / "avatars").exists()
+
+
+def test_avatar_file_must_stay_inside_data_root(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    contributors = data / "derived" / "contributors.json"
+    contributors.write_text(contributors.read_text().replace("avatars/ada-dev.png", "../../outside.png"))
+    plain_script(data, "bad", "all", "how-many-of-us")
+    with pytest.raises(BuildError, match="outside.png"):
+        build("bad", repo_root, data, tmp_path / "dist")
+    assert not (tmp_path / "dist" / "bad").exists()
+
+
+def test_missing_referenced_avatar_is_skipped(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "avatars" / "ada-dev.png").unlink()
+    plain_script(data, "gap", "all", "how-many-of-us")
+    build("gap", repo_root, data, tmp_path / "dist")
+    out = tmp_path / "dist" / "gap"
+    assert not (out / "avatars" / "ada-dev.png").exists()
+    assert (out / "avatars" / "placeholder.png").is_file()
+
+
+def test_music_volume_must_be_a_fraction(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "assets").mkdir()
+    (data / "assets" / "t.mp3").write_bytes(b"fake")
+    music_script(data, "loud", "{file: t.mp3, volume: 30}")
+    music_script(data, "mute", "{file: t.mp3, volume: 0}")
+    music_script(data, "full", "{file: t.mp3, volume: 1}")
+    with pytest.raises(BuildError, match="volume"):
+        build("loud", repo_root, data, tmp_path / "dist")
+    for name, vol in (("mute", 0), ("full", 1)):
+        result = build(name, repo_root, data, tmp_path / "dist")
+        assert read_payload(result.index)["script"]["music"]["volume"] == vol

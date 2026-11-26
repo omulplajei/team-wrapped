@@ -88,7 +88,10 @@ def _prepare_music(music: dict | None, data_root: Path) -> tuple[dict | None, tu
     file = music.get("file")
     if not file:
         raise BuildError("music.file is required when music is set")
-    spec = {"volume": music.get("volume", 0.5), "loop": music.get("loop", True)}
+    volume = music.get("volume", 0.5)
+    if isinstance(volume, bool) or not isinstance(volume, (int, float)) or not 0 <= volume <= 1:
+        raise BuildError(f"music volume must be a number between 0 and 1, got {volume!r}")
+    spec = {"volume": volume, "loop": music.get("loop", True)}
     if str(file).startswith(("http://", "https://")):
         spec["src"] = file
         return spec, None
@@ -102,6 +105,36 @@ def _prepare_music(music: dict | None, data_root: Path) -> tuple[dict | None, tu
         raise BuildError(f"music file '{file}' not found in {assets}")
     spec["src"] = "assets/music/" + urllib.parse.quote(source.name)
     return spec, (source, source.name)
+
+
+def _avatar_files(node) -> set[str]:
+    """Every string value of an 'avatar_file' key anywhere inside the payload."""
+    found: set[str] = set()
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "avatar_file" and isinstance(value, str):
+                found.add(value)
+            else:
+                found |= _avatar_files(value)
+    elif isinstance(node, list):
+        for item in node:
+            found |= _avatar_files(item)
+    return found
+
+
+def _prepare_avatars(payload: dict, data_root: Path) -> list[tuple[Path, str]]:
+    """Validate avatar references; return (source, relative name) for files that exist."""
+    root = data_root.resolve()
+    copies = []
+    for ref in sorted(_avatar_files(payload)):
+        if Path(ref).is_absolute():
+            raise BuildError(f"avatar file '{ref}' must be relative to {data_root}")
+        source = (data_root / ref).resolve()
+        if not source.is_relative_to(root):
+            raise BuildError(f"avatar file '{ref}' must stay inside {data_root}")
+        if source.is_file():
+            copies.append((source, ref))
+    return copies
 
 
 def _embed_json(payload: dict) -> str:
@@ -125,6 +158,8 @@ def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
         raise BuildError("no scenes left to play after skipping unsupported ones")
 
     payload["script"]["music"], music_file = _prepare_music(resolved.script.music, data_root)
+
+    avatars = _prepare_avatars(payload, data_root)
 
     used_types = sorted({scene["type"] for scene in payload["scenes"]})
     renderers = "\n".join(
@@ -158,8 +193,10 @@ def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
     for folder, name in _PLAYER_ASSETS:
         shutil.copy2(web / folder / name, out_dir / "assets" / name)
     shutil.copytree(vendor, out_dir / "assets" / "vendor")
-    if (data_root / "avatars").is_dir():
-        shutil.copytree(data_root / "avatars", out_dir / "avatars")
+    for source, ref in avatars:
+        target = out_dir / ref
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
     index = out_dir / "index.html"
     index.write_text(page)
     return BuildResult(out_dir=out_dir, index=index, skipped=skipped)
