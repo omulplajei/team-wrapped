@@ -41,10 +41,16 @@ team-wrapped/
     aggregate/            # one module per statistic family
       delivery_volume.py  review_collab.py  summary.py  curiosities.py
     metadata.py           # builds data/derived/meta.json
-  data/                   # GIT-IGNORED: config.yml, raw/, derived/, avatars/
-  data-sample/            # same layout, dummy repos and records
+    scenes/               # scene type plugins
+  scenes/                 # shared scene definitions (public)
+  scripts/                # shared scripts (public), for example year-wrapped
+  data/                   # GIT-IGNORED: config.yml, raw/, derived/, avatars/,
+                          #   scenes/ and scripts/ (private), assets/
+  data-sample/            # dummy data only: config, raw records, derived output
   tests/
-  docs/superpowers/specs/
+  docs/
+    datasets.md           # dataset catalog: the contract between data and scenes
+    superpowers/specs/
 ```
 
 `.gitignore` contains `data/`. A CI check fails if anything under `data/` is tracked.
@@ -217,12 +223,21 @@ An ordered list of scene references, in its own file.
 
 It runs against `data-sample/` before any real collection, and later against the real `data/derived/meta.json`, where it also shows which scenes would be skipped.
 
+### Sharing scenes and scripts
+Scenes and generic scripts are meant to be shared. They live in the public repo (`scenes/`, `scripts/`). Anyone can use a scene as long as they can produce the datasets it requires, with our collector or with their own.
+
+- **Loading.** The loader reads `scenes/` and `scripts/`, then `data/scenes/` and `data/scripts/`. A private file with the same `id` overrides the shared one. Private-only scenes and scripts are allowed.
+- **Scope-agnostic scenes.** A shared scene never names a repo or group. The script, or a private override, supplies the scope, so group names stay private.
+- **Dataset catalog.** `docs/datasets.md` lists every dataset name and its fields, for example `contributors.total` or `curiosities.biggest_pr_by_lines.value`. It is the contract between data and scenes. A scene may only require what the catalog lists, and `validate-script` enforces this. A scene that needs new data must extend the catalog in the same change.
+- **Missing data.** `validate-script` names the datasets and fields that are missing and the metric that would produce them.
+- **Media.** Small, licence-clean assets can live next to a shared scene. Large or private media is referenced from `data/assets/` or by URL.
+
 ### Layout
 ```
-src/team_wrapped/scenes/   # scene type plugins (generic, public)
-data-sample/scenes/        # sample scene definitions
-data-sample/scripts/       # sample script: year-wrapped.yml
-data/scenes/, data/scripts/  # private, git-ignored
+src/team_wrapped/scenes/     # scene type plugins
+scenes/, scripts/            # shared definitions (public)
+data/scenes/, data/scripts/  # private definitions (git-ignored)
+data-sample/                 # dummy data used to validate the shared scenes
 ```
 
 ## 13. Out of scope (for now)
