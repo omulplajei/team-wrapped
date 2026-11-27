@@ -80,3 +80,20 @@ test("a heading delays the count-ups so it can be read first", () => {
   assert.deepStrictEqual(counts(PARAMS), [0.3, 2.8]);                                   // unchanged without a heading
   assert.deepStrictEqual(counts({ ...PARAMS, heading: "H" }), [1.0, 3.5]);             // everything 0.7 s later
 });
+
+test("a heading delays the supporting cards' pop-in together with their numbers", () => {
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const popAt = (params) => {
+    const cards = render(params, DATA).tl.calls.find((c) => c.kind === "from" && Array.isArray(c.targets));
+    return round2(cards.at);
+  };
+  assert.strictEqual(popAt(PARAMS), 2.8);
+  assert.strictEqual(popAt({ ...PARAMS, heading: "H" }), 3.5);
+});
+
+test("an empty heading adds no element and no delay", () => {
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const { tl, container } = render({ ...PARAMS, heading: "" }, DATA);
+  assert.strictEqual(find(container, "tw-hero-heading").length, 0);
+  assert.deepStrictEqual(tl.calls.filter((c) => c.kind === "to" && "v" in c.vars).map((c) => round2(c.at)), [0.3, 2.8]);
+});
