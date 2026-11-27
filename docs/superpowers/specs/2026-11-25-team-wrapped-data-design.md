@@ -142,7 +142,7 @@ Review statistics count non-author activity only.
 - Activity by weekday and hour, in the configured timezone
 
 ### 7.4 Curiosities
-Top-N records per scope. Each record holds the value, the repo and the PR or commit reference. N is `curiosities.top_n`, and each curiosity can be toggled.
+Top-N records per scope, best first. Each record holds the value and what locates it: the repo and a PR number or commit, a date or month, or a date range. N is `curiosities.top_n`, and each curiosity can be toggled.
 
 | Curiosity | Source |
 |---|---|
@@ -186,7 +186,7 @@ Not a separate family. Where `groups` is configured, every statistic above is al
 - **Dataset names.** A dataset name `family.name` (for example `delivery_volume.lines`) resolves to `<family>.json`, then `scopes[<scope>][name]`. The `contributors` dataset has no second part, so it resolves to `scopes[<scope>]` itself.
 - **Field paths.** A field such as `total_net` is a key of the dataset object. A path such as `list.kind` means the key `kind` on the items of the list `list`. A field that is absent on some items (for example `list.login` on unlinked contributors) counts as present if any item has it.
 - **Time-bucketed datasets.** These hold one series per bucket size, keyed `day`, `week`, `month`, `quarter` or `year`. Each series is a list of `{"start": "<date>", ...fields}` entries ordered by `start`. The sample data does not exercise this shape yet, so it will be confirmed by the first scene that needs a time series.
-- **Curiosities.** A list of up to `top_n` records, each holding `value`, `repo` and a `pr_number` or `sha`, sorted by `value` descending. Curiosity datasets are lists of records best first; a record carries `value` and, depending on the curiosity, `repo`, `pr_number`, `date`, `month`, `from`, `to` or `merged_prs`, never people or PR titles.
+- **Curiosities.** Each dataset is a list of up to `top_n` records, best first (sorted by `value`, descending). A record holds `value` and, depending on the curiosity, `repo`, `pr_number`, `sha`, `files`, `date`, `month`, `from`, `to` or `merged_prs`. Records never carry people or PR titles.
 - **Repositories touched.** `repos.json` holds `touched` with `total` and `list` (items `{"name": ...}`) per scope. A repository is touched when it has at least one commit (author date), pull request (created or merged date), review (submitted date) or comment (created date) inside the window, from any author including bots, among the enabled metrics. `total` equals the length of `list`, and `list` is ordered alphabetically by `name`. The dataset is partial when any in-scope repository's status for an enabled metric is not complete. An empty list counts as missing data for scenes that require `list.name`, so scripts mark such scenes `on_missing_data: skip`. Until the aggregator exists, `derive-repos` writes this file from the configured `repos` and `groups` (every configured repository counts as touched) and marks it with `"basis": "configuration"`.
 - **Paths to files.** `avatar_file` is relative to the data root (`data/` or `data-sample/`).
 - **Privacy.** Derived files never contain author emails (section 6).
