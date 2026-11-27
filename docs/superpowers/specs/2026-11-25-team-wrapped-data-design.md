@@ -295,7 +295,7 @@ One folder per type in `web/scene-types/<type>/`:
 Initial types: `message`, `stats`, `bignumber` (one hero number with optional supporting figures), `sequence` (a heading and a list of steps, each a number with a label or a plain text, popping in one by one), `repogrid` (a heading with a highlighted count and a grid of folders), `headcount`, `curiosity`, and a media type for images and short video.
 
 ### Animation presets
-`web/presets/` holds shared building blocks for renderers and transitions: fade, slide, scale-in, count-up numbers, staggered lists, pop-in avatars and bubble-in. New presets are added here, and any renderer can use them.
+`web/presets/` holds shared building blocks for renderers and transitions: fade, slide, scale-in, count-up numbers, staggered lists, pop-in avatars, bubble-in and swell-in (appear, grow past the final size, settle back). New presets are added here, and any renderer can use them.
 
 ### Controls
 - **Start screen** with a Play button. The click is also what lets the browser start audio.

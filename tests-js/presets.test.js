@@ -114,3 +114,21 @@ test("fitFolderSize for 45 repos is the largest size that fits the constraint", 
   const needed = rows * (112 * 0.75) + (rows - 1) * gapY;
   assert.ok(needed > 574, `size 112 needs ${needed}px, exceeds 574px`);
 });
+
+test("swellIn appears, grows past its size and settles back to 1", () => {
+  const calls = [];
+  const tl = {
+    fromTo: (t, from, vars, at) => { calls.push({ kind: "fromTo", from, vars, at }); return tl; },
+    to: (t, vars, at) => { calls.push({ kind: "to", vars, at }); return tl; },
+  };
+  assert.strictEqual(presets.swellIn(tl, {}, 2, 1.25, 0.6), tl);
+  assert.strictEqual(calls.length, 2);
+  const [grow, settle] = calls;
+  assert.deepStrictEqual(grow.from, { opacity: 0, scale: 0 });
+  assert.strictEqual(grow.vars.opacity, 1);
+  assert.strictEqual(grow.vars.scale, 1.25);
+  assert.strictEqual(grow.at, 2);
+  assert.strictEqual(settle.vars.scale, 1);
+  assert.ok(Math.abs(settle.at - (2 + 0.6 * 0.55)) < 1e-9);
+  assert.ok(Math.abs(grow.vars.duration + settle.vars.duration - 0.6) < 1e-9);
+});

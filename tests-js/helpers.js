@@ -23,6 +23,7 @@ function fakeTimeline() {
   const tl = {
     calls,
     from: (targets, vars, at) => { calls.push({ kind: "from", targets, vars, at }); return tl; },
+    fromTo: (targets, from, vars, at) => { calls.push({ kind: "fromTo", targets, from, vars, at }); return tl; },
     to: (target, vars, at) => { calls.push({ kind: "to", target, vars, at }); return tl; },
   };
   return tl;

@@ -42,7 +42,14 @@ export default {
         }
       }
       body.append(el);
-      presets.popIn(tl, [el], 0.8 + i * 1.0, 0, 0.5);
+      const at = 0.8 + i * 1.0;
+      if (typeof step.text === "string") {
+        presets.popIn(tl, [el], at, 0, 0.5);
+      } else {
+        // The number swells and settles; its label fades in beside it a moment later.
+        presets.swellIn(tl, el.children[0], at);
+        presets.fadeIn(tl, el.children[1], at + 0.15, 0.4);
+      }
     });
 
     wrap.append(body);

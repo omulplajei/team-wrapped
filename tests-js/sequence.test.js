@@ -12,6 +12,7 @@ const PARAMS = {
     { value: "summary.totals.comments", label: "Comments" },
   ],
 };
+const round2 = (n) => Math.round(n * 100) / 100;
 
 function render(params, data, partial = []) {
   const tl = fakeTimeline();
@@ -41,17 +42,40 @@ test("numbers show their final value immediately, without a count-up", () => {
   const { tl, container } = render(PARAMS, DATA);
   assert.deepStrictEqual(find(container, "tw-seq-value").map((e) => e.textContent), ["540", "1,180"]);
   assert.deepStrictEqual(find(container, "tw-seq-label").map((e) => e.textContent), ["Pull requests", "Comments"]);
-  assert.strictEqual(tl.calls.filter((c) => c.kind === "to").length, 0);   // nothing counts up
+  assert.strictEqual(tl.calls.filter((c) => c.kind === "to" && "v" in c.vars).length, 0);   // nothing counts up
 });
 
-test("each step pops in on its own, one after another", () => {
+test("each number swells past its size and then settles back", () => {
+  const { tl } = render(PARAMS, DATA);
+  const swells = tl.calls.filter((c) => c.kind === "fromTo");
+  assert.deepStrictEqual(swells.map((c) => round2(c.at)), [0.8, 2.8]);
+  assert.ok(swells.every((c) => c.from.scale === 0 && c.from.opacity === 0 && c.vars.scale > 1));
+  const settles = tl.calls.filter((c) => c.kind === "to" && c.vars.scale === 1);
+  assert.strictEqual(settles.length, 2);
+  settles.forEach((c, i) => assert.ok(c.at > swells[i].at));
+});
+
+test("each label fades in beside its number, a little after the number starts", () => {
+  const { tl } = render(PARAMS, DATA);
+  const fades = tl.calls.filter((c) => c.kind === "from" && !Array.isArray(c.targets));
+  // the heading at 0, then the two labels
+  assert.deepStrictEqual(fades.map((c) => round2(c.at)), [0, 0.95, 2.95]);
+});
+
+test("the text step pops in on its own between the two numbers", () => {
   const { tl } = render(PARAMS, DATA);
   const pops = tl.calls.filter((c) => c.kind === "from" && Array.isArray(c.targets) && c.targets.length === 1);
-  assert.strictEqual(pops.length, 3);
-  const times = pops.map((c) => c.at);
-  assert.deepStrictEqual(times, [...times].sort((a, b) => a - b));
-  assert.ok(times[0] < times[1] && times[1] < times[2]);
-  assert.ok(pops.every((c) => c.vars.scale < 1 && c.vars.opacity === 0));
+  assert.strictEqual(pops.length, 1);
+  assert.strictEqual(round2(pops[0].at), 1.8);
+  assert.ok(pops[0].vars.scale < 1 && pops[0].vars.opacity === 0);
+});
+
+test("a number step holds the number first and its label after it, to be laid out side by side", () => {
+  const { container } = render(PARAMS, DATA);
+  const steps = find(container, "tw-seq-body")[0].children.filter((c) => c.className === "tw-seq-step");
+  steps.forEach((step) => {
+    assert.deepStrictEqual(step.children.slice(0, 2).map((c) => c.className), ["tw-seq-value", "tw-seq-label"]);
+  });
 });
 
 test("a missing value shows a dash", () => {
