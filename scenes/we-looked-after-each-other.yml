@@ -8,5 +8,5 @@ requires:
 params:
   heading: "We look after each other"
   steps:
-    - {lead: "We raised", value: summary.totals.merged_prs, label: "Pull requests"}
+    - {lead: "We merged", value: summary.totals.merged_prs, label: "Pull requests"}
     - {lead: "and left", value: summary.totals.comments, label: "Comments"}

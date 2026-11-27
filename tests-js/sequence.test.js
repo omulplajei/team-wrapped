@@ -7,7 +7,7 @@ const DATA = { "summary.totals": { reviews: 540, comments: 1180 } };
 const PARAMS = {
   heading: "We look after each other",
   steps: [
-    { lead: "We raised", value: "summary.totals.reviews", label: "Pull requests" },
+    { lead: "We merged", value: "summary.totals.reviews", label: "Pull requests" },
     { lead: "and left", value: "summary.totals.comments", label: "Comments" },
   ],
 };
@@ -46,7 +46,7 @@ test("each step is one line: lead text, then the number, then its label", () => 
   body.children.forEach((step) => {
     assert.deepStrictEqual(step.children.map((c) => c.className), ["tw-seq-lead", "tw-seq-value", "tw-seq-label"]);
   });
-  assert.deepStrictEqual(find(container, "tw-seq-lead").map((e) => e.textContent), ["We raised", "and left"]);
+  assert.deepStrictEqual(find(container, "tw-seq-lead").map((e) => e.textContent), ["We merged", "and left"]);
 });
 
 test("numbers show their final value immediately, without a count-up", () => {
