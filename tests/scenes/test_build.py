@@ -38,9 +38,9 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
         "curiosity-busiest-month", "curiosity-busiest-day", "curiosity-longest-streak",
         "curiosity-longest-conversation", "curiosity-most-reviewed-pr",
         "curiosity-most-commits-pr", "curiosity-spring-cleaning",
-        "capability-commits", "repos-touched", "we-changed-the-code", "how-many-of-us",
+        "repos-touched", "we-changed-the-code", "capability-commits", "how-many-of-us",
     ]
-    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 30.0, 8.0, 6.0, 14.0]
+    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 8.0, 6.0, 30.0, 14.0]
     assert scenes["we-shipped"]["partial"] == []
     assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
@@ -77,7 +77,7 @@ def test_build_skips_both_line_data_scenes_when_lines_are_missing(repo_root, sam
         "curiosity-busiest-month", "curiosity-busiest-day", "curiosity-longest-streak",
         "curiosity-longest-conversation", "curiosity-most-reviewed-pr",
         "curiosity-most-commits-pr", "curiosity-spring-cleaning",
-        "capability-commits", "repos-touched", "how-many-of-us"]
+        "repos-touched", "capability-commits", "how-many-of-us"]
 
 
 def test_build_fails_when_a_scene_is_unsupported(repo_root, sample_root, tmp_path):
@@ -363,7 +363,7 @@ def test_capability_scene_embeds_the_commit_flow_of_scope_all(repo_root, sample_
     assert scene["type"] == "capability-flow"
     assert scene["scope"] == "all"
     assert scene["partial"] == []
-    assert scene["params"]["heading"] == "Every commit, one block"
+    assert scene["params"]["heading"] == "The whole year in a postcard"
     assert "layout" not in scene["params"]
     groups = scene["data"]["commit_flow.groups"]
     assert [g["name"] for g in groups] == ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta"]

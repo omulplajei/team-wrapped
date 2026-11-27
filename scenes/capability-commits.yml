@@ -1,5 +1,5 @@
 id: capability-commits
-title: Year in blocks
+title: The whole year in a postcard
 type: capability-flow
 # One hexagon per capability (a configured group); every commit of the year falls into it as a block whose
 # area grows with the lines it changed. commit_flow only exists for scope `all`: give the script entry `scope: all`.
@@ -11,7 +11,7 @@ requires:
     fields: [days, start]
     allow_partial: true
 params:
-  heading: "Every commit, one block"
+  heading: "The whole year in a postcard"
   groups: commit_flow.groups
   window: commit_flow.window
   # Optional: place the hexagons by hand instead of the automatic honeycomb (core in the middle).

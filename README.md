@@ -47,7 +47,7 @@ It prints the page path when it is done, and stops with a message (exit code 1 o
 ## Layout
 
 - `scenes/`, `scripts/`: shared scene and script definitions.
-- `web/`: the player, scene types (one folder each, e.g. `cast` for the closing people scene, `capability-flow` for the "Year in blocks" honeycomb), animation presets and vendored GSAP.
+- `web/`: the player, scene types (one folder each, e.g. `cast` for the closing people scene, `capability-flow` for the "The whole year in a postcard" honeycomb), animation presets and vendored GSAP.
 - `docs/datasets.md`: the catalog of datasets a scene may require.
 - `data-sample/`: dummy data in the same layout as your private `data/` folder.
 - `data/` and `dist/`: private, git-ignored. Put your own derived data, scenes, scripts and music in `data/`.
@@ -107,9 +107,9 @@ Datasets computed from incomplete data (a repository that is not `complete`, or 
 
 `build` takes `--theme NAME` (or a `theme:` line in a script). A theme is a folder `themes/<name>/` with a `theme.yml` (colours, font, logo, backdrop images) and its asset files; put your own in `data/themes/<name>/`, which is git-ignored, so brand assets stay out of the repo. See section 14 of the spec for the format.
 
-The capability colours of the "Year in blocks" scene are theme colours too: `cat-core`, `cat-extension`, `cat-support` and `cat-none` (CSS variables `--tw-cat-core` and so on; defaults soft green, blue, purple and grey). Each hexagon is filled with its colour at low opacity and outlined in it; its blocks use it at full strength.
+The capability colours of the "The whole year in a postcard" scene are theme colours too: `cat-core`, `cat-extension`, `cat-support` and `cat-none` (CSS variables `--tw-cat-core` and so on; defaults soft green, blue, purple and grey). Each hexagon is filled with its colour at low opacity and outlined in it; its blocks use it at full strength.
 
-## Year in blocks
+## The whole year in a postcard
 
 The `capability-commits` scene (type `capability-flow`, in `year-wrapped` with `scope: all`) reads `commit_flow`: one hexagon per configured group, labelled with its `label` and coloured by its `category`, and every commit of the window falls into it as a block on the day it was authored, so the piles grow through the year while a month bar runs along the bottom. A block's side is `k * sqrt(lines)`, kept between a minimum (0-line commits, drawn at least 1.5 px) and a third of the hexagon width, so its area grows with the lines changed. One `k` is shared by all hexagons, chosen so that the busiest group's blocks cover half of its hexagon: busy capabilities fill up and quiet ones stay low, so hexagons compare honestly. The largest commits (top 0.5%, at least three) flash as they land. The hexagons are arranged automatically (core in the middle); the scene file shows an optional `layout` param to place them by hand.
 

@@ -16,7 +16,7 @@ const GROUPS = [
 const dataFor = (groups, window = { days: 365, start: "2026-01-01" }) => ({
   "commit_flow.groups": groups, "commit_flow.window": window,
 });
-const PARAMS = { heading: "Every commit, one block", groups: "commit_flow.groups", window: "commit_flow.window" };
+const PARAMS = { heading: "The whole year in a postcard", groups: "commit_flow.groups", window: "commit_flow.window" };
 
 function render(params = PARAMS, data = dataFor(GROUPS), partial = [], duration = 30) {
   const tl = fakeTimeline();
@@ -231,7 +231,7 @@ test("upperBound counts the values at or below t", () => {
 test("render: heading, one label per group, counters that follow the scene time", () => {
   const { tl, container, result } = render();
   assert.strictEqual(result, tl);
-  assert.strictEqual(find(container, "tw-cap-heading")[0].textContent, "Every commit, one block");
+  assert.strictEqual(find(container, "tw-cap-heading")[0].textContent, "The whole year in a postcard");
   const names = find(container, "tw-cap-name").map((e) => e.textContent);
   assert.deepStrictEqual(names, ["Core Alpha", "beta", "eta"]);
   const counts = () => find(container, "tw-cap-count").map((e) => e.textContent);
