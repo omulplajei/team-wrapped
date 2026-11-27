@@ -41,6 +41,20 @@
     return tl.from(targets, { opacity: 0, scale: 0, duration, stagger: each, ease: "back.out(1.7)" }, at);
   }
 
+  // Bubbles rise from below and from varied sides, then settle in place with a small bounce.
+  // Offsets depend only on the target index, so scrubbing and replaying look identical.
+  function bubbleIn(tl, targets, at = 0, each = 0.08, duration = 1.1) {
+    return tl.from(targets, {
+      opacity: 0,
+      scale: 0.2,
+      y: (i) => 160 + ((i * 53) % 90),
+      x: (i) => ((i * 37) % 120) - 60,
+      duration,
+      stagger: each,
+      ease: "elastic.out(1, 0.6)",
+    }, at);
+  }
+
   function countUp(tl, el, to, at = 0, duration = 1.2) {
     const state = { v: 0 };
     el.textContent = format(0);
@@ -52,7 +66,7 @@
     }, at);
   }
 
-  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, countUp };
+  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, bubbleIn, countUp };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

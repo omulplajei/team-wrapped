@@ -1,41 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const fs = require("node:fs");
-const path = require("node:path");
 const presets = require("../web/presets/presets.js");
-
-// A minimal DOM: just enough for the renderer, which only builds elements.
-function makeEl(tag) {
-  const el = { tag, className: "", textContent: "", children: [] };
-  el.append = (...kids) => { el.children.push(...kids); };
-  el.appendChild = (kid) => { el.children.push(kid); return kid; };
-  return el;
-}
-
-// Load render.js the way the build does: `export default` becomes an assignment.
-function loadRenderer(type) {
-  const file = path.join(__dirname, "..", "web", "scene-types", type, "render.js");
-  const source = fs.readFileSync(file, "utf8").replace("export default", "module.exports =");
-  const module = { exports: {} };
-  new Function("module", "document", source)(module, { createElement: makeEl });
-  return module.exports;
-}
-
-function fakeTimeline() {
-  const calls = [];
-  const tl = {
-    calls,
-    from: (targets, vars, at) => { calls.push({ kind: "from", targets, vars, at }); return tl; },
-    to: (target, vars, at) => { calls.push({ kind: "to", target, vars, at }); return tl; },
-  };
-  return tl;
-}
-
-function find(el, className, found = []) {
-  if (el.className === className) found.push(el);
-  (el.children || []).forEach((kid) => find(kid, className, found));
-  return found;
-}
+const { makeEl, loadRenderer, fakeTimeline, find, finishCountUps } = require("./helpers.js");
 
 function render(params, data, partial = []) {
   const tl = fakeTimeline();
@@ -44,11 +10,6 @@ function render(params, data, partial = []) {
     container, data, params, partial, duration: 6, gsap: { timeline: () => tl }, presets,
   });
   return { tl, container, result };
-}
-
-// Run every count-up to its end so the elements show their final text.
-function finishCountUps(tl) {
-  tl.calls.filter((c) => c.kind === "to").forEach((c) => { c.target.v = c.vars.v; c.vars.onUpdate(); });
 }
 
 const DATA = { "summary.totals": { commits: 1240, merged_prs: 310 } };

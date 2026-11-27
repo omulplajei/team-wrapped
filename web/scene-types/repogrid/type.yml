@@ -1,0 +1,3 @@
+name: repogrid
+default_duration: 8
+required_params: [heading, value, names]
