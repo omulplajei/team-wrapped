@@ -31,8 +31,39 @@ class RawData:
     corrupt: dict = field(default_factory=dict)     # "<repo>/<file>" -> skipped line count (non-zero only)
 
 
-def _read_jsonl(path: Path, repo: str, key: str, corrupt: dict) -> list:
-    records, bad = [], 0
+def _whole(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _scalar(value) -> bool:
+    return _whole(value) or isinstance(value, str)
+
+
+def _optional_scalar(value) -> bool:
+    return value is None or _scalar(value)
+
+
+def _identity(metric: str, record: dict):
+    """The de-duplication key of a record (without the repo), or None when a key field is missing or has the wrong type."""
+    if metric == "commits":
+        return (record.get("sha"),) if isinstance(record.get("sha"), str) else None
+    if metric == "pull_requests":
+        return (record.get("number"),) if _whole(record.get("number")) else None
+    if not _whole(record.get("pr_number")):
+        return None
+    if metric == "comments":
+        ok = _scalar(record.get("comment_id")) and all(_optional_scalar(record.get(f))
+                                                       for f in ("thread_root_id", "in_reply_to_id"))
+        return (record["comment_id"],) if ok else None
+    if record.get("review_id") is not None:
+        return ("id", record["review_id"]) if _scalar(record["review_id"]) else None
+    fallback = tuple(record.get(f) for f in ("pr_number", "reviewer_login", "submitted_at", "state"))
+    return ("content", *fallback) if all(_optional_scalar(v) for v in fallback) else None
+
+
+def _read_jsonl(path: Path, repo: str, metric: str, key: str, corrupt: dict) -> list:
+    """Records of one file. A repeated key keeps the last record, at the position of the first (append-only files)."""
+    records, bad = {}, 0
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         if not line.strip():
             continue
@@ -44,11 +75,15 @@ def _read_jsonl(path: Path, repo: str, key: str, corrupt: dict) -> list:
         if not isinstance(record, dict):
             bad += 1
             continue
+        identity = _identity(metric, record)
+        if identity is None:
+            bad += 1
+            continue
         record["repo"] = repo
-        records.append(record)
+        records[identity] = record
     if bad:
         corrupt[key] = bad
-    return records
+    return list(records.values())
 
 
 def _read_status(path: Path, repo: str, corrupt: dict) -> dict | None:
@@ -77,7 +112,7 @@ def load_raw(data_root, config: Config) -> RawData:
             path = folder / FILES[metric]
             present = path.is_file()
             if present:
-                raw.records[metric].extend(_read_jsonl(path, repo, f"{repo}/{FILES[metric]}", raw.corrupt))
+                raw.records[metric].extend(_read_jsonl(path, repo, metric, f"{repo}/{FILES[metric]}", raw.corrupt))
             if statuses is None:
                 state = "never-run"
             elif metric in statuses:

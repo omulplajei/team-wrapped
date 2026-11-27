@@ -103,11 +103,13 @@ One JSON object per line. Timestamps are ISO 8601 UTC strings (`2026-03-14T09:30
 |---|---|
 | `commits.jsonl` | `repo`, `sha`, `author_login` (null when unlinked), `author_name`, `author_email`, `authored_at`, `committed_at`, `is_merge`, `pr_number` (null if unknown), `enriched` (bool), `additions?`, `deletions?`, `files_changed?` |
 | `pull_requests.jsonl` | `repo`, `number`, `author_login`, `created_at`, `merged_at` (null), `closed_at` (null), `state` (`open`, `closed`, `merged`), `base_branch`, `labels`, `draft`, `comment_count`, `review_count`, `enriched` (bool), `commit_count?`, `changed_files?`, `additions?`, `deletions?` |
-| `reviews.jsonl` | `repo`, `pr_number`, `reviewer_login`, `state` (`approved`, `changes_requested`, `commented`), `submitted_at` |
+| `reviews.jsonl` | `repo`, `pr_number`, `review_id?`, `reviewer_login`, `state` (`approved`, `changes_requested`, `commented`), `submitted_at` |
 | `comments.jsonl` | `repo`, `pr_number`, `author_login`, `kind` (`review` for code comments, `conversation`), `created_at`, `comment_id`, `in_reply_to_id` (null), `thread_root_id` (null for conversation comments) |
 | `status.json` (one per repo) | `{"<metric>": "complete" | "partial" | "never-run" | "failed"}`. A missing file means every metric is `never-run`; a metric missing from an existing file whose jsonl exists counts as `complete` |
 
 Layout: `data/raw/<repo>/<file>`. The aggregator never writes to `raw/`.
+
+Keys and repeated records. Files are append-only (section 10), so a file may hold the same key more than once, for example a cheap commit record followed by its enriched version. The aggregator keeps the last record per key (first-seen order is kept, so output stays deterministic): commits by (`repo`, `sha`), pull requests by (`repo`, `number`), comments by (`repo`, `comment_id`), reviews by (`repo`, `review_id`). A review record without `review_id` falls back to (`pr_number`, `reviewer_login`, `submitted_at`, `state`). A record whose key field is missing or of the wrong type (`sha` text, `number` and `pr_number` whole numbers, `comment_id` and `review_id` whole number or text) is skipped and counted as a corrupt line.
 
 ### 5.2 Aggregator v1 scope
 
@@ -244,7 +246,7 @@ Read by a front-end to show freshness and gaps.
 
 - **Isolation.** Failures are isolated per repo and metric. A 404 or 403 on one repo is recorded as `failed` with the reason, and the rest continues.
 - **Retries.** Transient errors (5xx, secondary rate limits) retry with backoff. After the retry limit, that unit is marked `partial`.
-- **Storage.** Corrupt or half-written JSONL lines are skipped on read and reported in the metadata. Writes are append-only.
+- **Storage.** Corrupt or half-written JSONL lines are skipped on read and reported in the metadata. Writes are append-only, so repeated keys are expected and the last record wins (section 5.1).
 - **Contributors.** A missing login falls back to the unlinked identity. A failed avatar download falls back to the placeholder.
 
 ## 11. Testing

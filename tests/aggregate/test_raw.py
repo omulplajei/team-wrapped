@@ -90,3 +90,48 @@ def test_loading_never_writes_to_raw(fx):
     after = {p: p.read_bytes() for p in (fx.root / "raw").rglob("*") if p.is_file()}
     assert before == after
     assert json.loads((fx.root / "raw/alpha-api/status.json").read_text()) == {"commits": "complete"}
+
+
+def test_duplicate_commits_keep_the_last_record_at_the_first_position(fx):
+    fx.raw("alpha-api", "commits.jsonl", [commit("a"), commit("b"), commit("a", enriched=True, additions=4, deletions=1)])
+    fx.raw("beta-web", "commits.jsonl", [commit("a")])                 # same sha, other repo: kept
+    commits = load(fx).records["commits"]
+    assert [(r["repo"], r["sha"], r["enriched"]) for r in commits] == [
+        ("alpha-api", "a", True), ("alpha-api", "b", False), ("beta-web", "a", False)]
+
+
+def test_duplicate_pull_requests_keep_the_enriched_last_version(fx):
+    fx.raw("alpha-api", "pull_requests.jsonl", [pull_request(1), pull_request(2),
+                                                pull_request(1, enriched=True, commit_count=3)])
+    prs = load(fx).records["pull_requests"]
+    assert [(r["number"], r["enriched"]) for r in prs] == [(1, True), (2, False)]
+
+
+def test_duplicate_comments_are_keyed_by_comment_id(fx):
+    fx.raw("alpha-api", "comments.jsonl", [comment(cid=1), comment(cid=2), comment(cid=1, at="2026-03-16T10:00:00Z"), comment(cid="x")])
+    comments = load(fx).records["comments"]
+    assert [(r["comment_id"], r["created_at"][:10]) for r in comments] == [
+        (1, "2026-03-16"), (2, "2026-03-15"), ("x", "2026-03-15")]
+
+
+def test_duplicate_reviews_use_review_id_or_fall_back_to_the_content_key(fx):
+    fx.raw("alpha-api", "reviews.jsonl", [
+        review(review_id=7, state="commented"), review(review_id=8), review(review_id=7),
+        review(pr=2), review(pr=2), review(pr=2, state="commented")])
+    reviews = load(fx).records["reviews"]
+    assert [(r.get("review_id"), r["pr_number"], r["state"]) for r in reviews] == [
+        (7, 1, "approved"), (8, 1, "approved"), (None, 2, "approved"), (None, 2, "commented")]
+
+
+def test_records_with_invalid_keys_are_corrupt_and_never_crash(fx):
+    fx.raw("alpha-api", "commits.jsonl", [commit("a"), {**commit(), "sha": ["x"]}, {**commit(), "sha": 5}])
+    fx.raw("alpha-api", "pull_requests.jsonl", [pull_request(1), {**pull_request(), "number": [1]},
+                                                {**pull_request(), "number": "1"}, {**pull_request(), "number": True}])
+    fx.raw("alpha-api", "reviews.jsonl", [review(), review(review_id=[1]), {**review(), "pr_number": {"a": 1}},
+                                          {**review(), "reviewer_login": ["x"]}])
+    fx.raw("alpha-api", "comments.jsonl", [comment(), comment(cid=[1]), comment(cid=2, thread_root_id={"a": 1}),
+                                           comment(cid=3, in_reply_to_id=[1]), comment(cid=4, in_reply_to_id="9")])
+    raw = load(fx)
+    assert [len(raw.records[m]) for m in ("commits", "pull_requests", "reviews", "comments")] == [1, 1, 1, 2]
+    assert raw.corrupt == {"alpha-api/commits.jsonl": 2, "alpha-api/pull_requests.jsonl": 3,
+                           "alpha-api/reviews.jsonl": 3, "alpha-api/comments.jsonl": 3}

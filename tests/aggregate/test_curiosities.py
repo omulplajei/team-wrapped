@@ -60,7 +60,8 @@ def test_reviews_exclude_the_pr_author_and_rounds_count_changes_requested(fx):
     fx.raw("alpha-api", "pull_requests.jsonl", [pull_request(1, login="ada-dev")])
     fx.raw("alpha-api", "reviews.jsonl", [
         review(1, login="ada-dev"), review(1, login="grace-codes", state="changes_requested"),
-        review(1, login="grace-codes", state="changes_requested"), review(1, login="linus", state="approved"),
+        review(1, login="grace-codes", state="changes_requested", at="2026-03-16T10:00:00Z"),
+        review(1, login="linus", state="approved"),
         review(2, login="grace-codes")])
     data, partial = run(fx)
     assert data["most_reviewed_pr"][0] == {"value": 3, "repo": "alpha-api", "pr_number": 1}
