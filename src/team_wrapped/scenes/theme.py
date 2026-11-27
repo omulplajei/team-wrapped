@@ -23,6 +23,10 @@ DEFAULT_COLORS = {
     "folder-bottom": "#e0a93b",
     "folder-tab": "#d99a2b",
     "folder-text": "#2a1f05",
+    "cat-core": "#7fd49a",
+    "cat-extension": "#7aaef0",
+    "cat-support": "#b49cf0",
+    "cat-none": "#9aa0a8",
 }
 
 _VARIABLES = {key: "--tw-" + {"background": "bg"}.get(key, key) for key in DEFAULT_COLORS}

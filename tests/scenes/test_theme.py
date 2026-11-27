@@ -226,3 +226,20 @@ def test_non_image_assets_are_rejected(tmp_path, yml, files):
 def test_upper_case_image_suffix_is_accepted(tmp_path):
     make_theme(tmp_path, yml="logo: assets/LOGO.PNG\n", files=("LOGO.PNG",))
     assert load_theme("brand", [tmp_path]).logo.name == "LOGO.PNG"
+
+
+def test_player_css_root_declares_every_default_colour(repo_root):
+    import re
+    css = (repo_root / "web" / "player" / "player.css").read_text()
+    root = re.search(r":root \{(.*?)\}", css, re.S).group(1)
+    declared = dict(re.findall(r"(--tw-[\w-]+):\s*([^;]+);", root))
+    for key, value in DEFAULT_COLORS.items():
+        name = "--tw-" + {"background": "bg"}.get(key, key)
+        assert declared.get(name) == value, name
+
+
+def test_category_colours_are_theme_tokens(tmp_path):
+    make_theme(tmp_path, yml='colors:\n  cat-core: "#00aa00"\n  cat-none: "rgb(1, 2, 3)"\n')
+    css = css_overrides(load_theme("brand", [tmp_path]))
+    assert "--tw-cat-core: #00aa00;" in css and "--tw-cat-none: rgb(1, 2, 3);" in css
+    assert "--tw-cat-support" not in css
