@@ -9,4 +9,5 @@ params:
   teaser: "The most talked-about pull request"
   records: curiosities.most_commented_pr
   unit: "comments"
+  unit_one: "comment"
   context: "in {repo}, pull request #{pr_number}"

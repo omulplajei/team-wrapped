@@ -9,4 +9,6 @@ params:
   teaser: "Our longest merge streak"
   records: curiosities.longest_merge_streak
   unit: "days in a row with a merged pull request"
+  unit_one: "day in a row with a merged pull request"
   context: "from {from} to {to}"
+  context_one: "on {from}"

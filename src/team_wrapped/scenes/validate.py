@@ -101,6 +101,24 @@ def validate_script(script: Script, scenes: dict, derived: DerivedData,
             list_ref = scene.params.get(list_param)
             if isinstance(list_ref, str) and not isinstance(resolve_ref(datasets, list_ref), list):
                 problems.append(f"{list_param} '{list_ref}' does not resolve to a list")
+        records_ref = scene.params.get("records")
+        if isinstance(records_ref, str):
+            records = resolve_ref(datasets, records_ref)
+            if isinstance(records, list) and records:
+                first = records[0]
+                if not isinstance(first, dict):
+                    problems.append(f"records '{records_ref}' must contain objects")
+                else:
+                    for req in scene.requires:
+                        if req["dataset"] != records_ref:
+                            continue
+                        for field in req.get("fields", []):
+                            if field not in first:
+                                problems.append(f"records '{records_ref}': first record is missing field '{field}'")
+                    key = scene.params.get("value_key") or "value"
+                    number = first.get(key)
+                    if isinstance(number, bool) or not isinstance(number, (int, float)):
+                        problems.append(f"records '{records_ref}': first record's '{key}' is not a number")
 
         status = "unsupported" if problems else ("partial" if partial else "supported")
         results.append(SceneResult(

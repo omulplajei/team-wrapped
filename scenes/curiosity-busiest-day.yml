@@ -9,4 +9,5 @@ params:
   teaser: "Our busiest day"
   records: curiosities.busiest_day
   unit: "commits"
-  context: "on {date}, with {merged_prs} pull requests merged"
+  unit_one: "commit"
+  context: "on {date}, with {merged_prs:pull request|pull requests} merged"

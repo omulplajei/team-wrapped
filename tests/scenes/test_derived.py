@@ -19,7 +19,8 @@ def test_dataset_lookup_on_sample(sample_root):
 
 
 def test_partial_datasets_from_meta(sample_root, tmp_path):
-    assert DerivedData(sample_root).partial_datasets() == {"delivery_volume.lines"}
+    assert DerivedData(sample_root).partial_datasets() == {
+        "delivery_volume.lines", "curiosities.most_commits_pr", "curiosities.most_lines_deleted_pr"}
     assert DerivedData(tmp_path).partial_datasets() == set()   # no meta.json at all
 
 

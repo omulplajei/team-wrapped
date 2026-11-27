@@ -95,7 +95,9 @@
     "pull_requests": 0.8
   },
   "partial_datasets": [
-    "delivery_volume.lines"
+    "delivery_volume.lines",
+    "curiosities.most_commits_pr",
+    "curiosities.most_lines_deleted_pr"
   ],
   "groups": {
     "alpha": [

@@ -9,4 +9,6 @@ params:
   teaser: "Our longest streak"
   records: curiosities.longest_commit_streak
   unit: "days in a row with a commit"
+  unit_one: "day in a row with a commit"
   context: "from {from} to {to}"
+  context_one: "on {from}"

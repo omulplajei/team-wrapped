@@ -9,4 +9,5 @@ params:
   teaser: "Our busiest month"
   records: curiosities.busiest_month
   unit: "commits"
-  context: "in {month}, with {merged_prs} pull requests merged"
+  unit_one: "commit"
+  context: "in {month}, with {merged_prs:pull request|pull requests} merged"

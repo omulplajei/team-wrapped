@@ -46,6 +46,11 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
     assert scenes["how-many-of-us"]["partial"] == []
     assert scenes["repos-touched"]["partial"] == []
+    assert scenes["curiosity-most-commits-pr"]["partial"] == ["curiosities.most_commits_pr"]
+    assert scenes["curiosity-spring-cleaning"]["partial"] == ["curiosities.most_lines_deleted_pr"]
+    for cid in ("curiosity-busiest-month", "curiosity-busiest-day", "curiosity-longest-streak",
+                "curiosity-longest-conversation", "curiosity-most-reviewed-pr"):
+        assert scenes[cid]["partial"] == [], cid
     assert scenes["repos-touched"]["data"]["repos.touched"]["total"] == 14
     assert scenes["we-shipped"]["data"]["summary.totals"]["commits"] == 1240
     assert payload["script"]["music"] is None

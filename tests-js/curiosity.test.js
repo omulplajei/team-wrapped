@@ -94,3 +94,27 @@ test("a 4-digit pr_number prints without a thousands separator", () => {
   const { container } = render(PARAMS, data);
   assert.strictEqual(find(container, "tw-cur-context")[0].textContent, "in sample-api, pull request #4821");
 });
+
+const ONE = { "curiosities.longest_comment_chain": [{ value: 1, repo: "sample-api", pr_number: 7, from: "2026-03-02" }] };
+const SING = { unit_one: "comment in one review thread", context_one: "on {from}" };
+
+test("unit_one and context_one are used when the number is exactly 1", () => {
+  const { container } = render({ ...PARAMS, ...SING }, ONE);
+  assert.strictEqual(find(container, "tw-cur-unit")[0].textContent, "comment in one review thread");
+  assert.strictEqual(find(container, "tw-cur-context")[0].textContent, "on 2 March");
+});
+
+test("unit_one and context_one are ignored when the number is not 1", () => {
+  const { container } = render({ ...PARAMS, ...SING });
+  assert.strictEqual(find(container, "tw-cur-unit")[0].textContent, "comments in one review thread");
+  assert.strictEqual(find(container, "tw-cur-context")[0].textContent, "in sample-api, pull request #482");
+});
+
+test("a value of 1 falls back to unit and context when the singular forms are missing or empty", () => {
+  const onlyUnit = render({ ...PARAMS, unit_one: "comment" }, ONE).container;
+  assert.strictEqual(find(onlyUnit, "tw-cur-unit")[0].textContent, "comment");
+  assert.strictEqual(find(onlyUnit, "tw-cur-context")[0].textContent, "in sample-api, pull request #7");
+  const onlyContext = render({ ...PARAMS, context_one: "on {from}", unit_one: "" }, ONE).container;
+  assert.strictEqual(find(onlyContext, "tw-cur-unit")[0].textContent, "comments in one review thread");
+  assert.strictEqual(find(onlyContext, "tw-cur-context")[0].textContent, "on 2 March");
+});

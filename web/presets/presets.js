@@ -185,7 +185,8 @@
     return MONTH.format(new Date(Date.UTC(+m[1], +m[2] - 1, 1)));
   }
 
-  // Replaces {key} in a template with the record's value, formatted by key.
+  // Replaces {key} in a template with the record's value, formatted by key; {key:one|many} adds the number and picks the form.
+  // Dates carry no year because the wrap covers one calendar year.
   const FIELD_FORMATS = {
     date: (v) => formatDate(v, true),
     from: (v) => formatDate(v, false),
@@ -195,9 +196,13 @@
   function fillTemplate(template, record) {
     const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
     const rec = record !== null && typeof record === "object" ? record : {};
-    return String(template).replace(/\{(\w+)\}/g, (_, key) => {
+    return String(template).replace(/\{(\w+)(?::([^|}]*)\|([^}]*))?\}/g, (_, key, singular, plural) => {
       const value = has(rec, key) ? rec[key] : undefined;
       if (value === undefined || value === null) return "";
+      if (singular !== undefined) {                                      // {key:singular|plural}
+        if (typeof value !== "number") return "";
+        return format(value) + " " + (value === 1 ? singular : plural);
+      }
       if (has(FIELD_FORMATS, key)) return FIELD_FORMATS[key](String(value));
       if (/_number$/.test(key)) return String(value);                    // ids are never given thousands separators
       return typeof value === "number" ? format(value) : String(value);

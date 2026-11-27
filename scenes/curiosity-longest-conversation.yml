@@ -9,4 +9,5 @@ params:
   teaser: "The longest conversation"
   records: curiosities.longest_comment_chain
   unit: "comments in one review thread"
+  unit_one: "comment in one review thread"
   context: "in {repo}, pull request #{pr_number}"

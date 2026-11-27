@@ -9,4 +9,5 @@ params:
   teaser: "Spring cleaning"
   records: curiosities.most_lines_deleted_pr
   unit: "lines deleted in one pull request"
+  unit_one: "line deleted in one pull request"
   context: "in {repo}, pull request #{pr_number}"

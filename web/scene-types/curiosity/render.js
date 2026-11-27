@@ -19,10 +19,13 @@ export default {
     const teaser = part("tw-cur-teaser", params.teaser);
     // Shown at its final value straight away: the swell is the only animation.
     const value = part("tw-cur-value", typeof raw === "number" ? presets.format(raw) : "–");
-    const unit = part("tw-cur-unit", params.unit);
+    const isOne = raw === 1;
+    const text = (one, many) => (isOne && typeof one === "string" && one !== "" ? one : many);
+    const unit = part("tw-cur-unit", text(params.unit_one, params.unit));
     const badge = presets.isPartial(partial, params.records) ? part("tw-cur-partial", "partial data") : null;
-    const hasContext = typeof params.context === "string" && params.context !== "";
-    const context = hasContext ? part("tw-cur-context", record ? presets.fillTemplate(params.context, record) : "") : null;
+    const contextText = text(params.context_one, params.context);
+    const hasContext = typeof contextText === "string" && contextText !== "";
+    const context = hasContext ? part("tw-cur-context", record ? presets.fillTemplate(contextText, record) : "") : null;
 
     const wrap = document.createElement("div");
     wrap.className = "tw-cur";

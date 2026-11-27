@@ -360,3 +360,24 @@ test("date text does not depend on the process time zone", () => {
     assert.strictEqual(out, "Saturday 14 March|1 March", zone);
   });
 });
+
+test("fillTemplate plural syntax prints the number and the singular or plural form", () => {
+  const t = "with {merged_prs:pull request|pull requests} merged";
+  assert.strictEqual(presets.fillTemplate(t, { merged_prs: 1 }), "with 1 pull request merged");
+  assert.strictEqual(presets.fillTemplate(t, { merged_prs: 0 }), "with 0 pull requests merged");
+  assert.strictEqual(presets.fillTemplate(t, { merged_prs: 12 }), "with 12 pull requests merged");
+  assert.strictEqual(presets.fillTemplate(t, { merged_prs: 1500 }), "with 1,500 pull requests merged");
+  assert.strictEqual(presets.fillTemplate("{merged_prs}", { merged_prs: 1 }), "1");
+});
+
+test("fillTemplate plural syntax prints nothing for a missing or non-number value", () => {
+  const t = "[{n:day|days}]";
+  assert.strictEqual(presets.fillTemplate(t, {}), "[]");
+  assert.strictEqual(presets.fillTemplate(t, { n: null }), "[]");
+  assert.strictEqual(presets.fillTemplate(t, { n: "1" }), "[]");
+  assert.strictEqual(presets.fillTemplate(t, null), "[]");
+});
+
+test("fillTemplate plural syntax treats prototype keys as missing", () => {
+  assert.strictEqual(presets.fillTemplate("{constructor:a|b}{__proto__:a|b}{toString:a|b}", {}), "");
+});

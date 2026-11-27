@@ -9,4 +9,5 @@ params:
   teaser: "The pull request that kept going"
   records: curiosities.most_commits_pr
   unit: "commits in one pull request"
+  unit_one: "commit in one pull request"
   context: "in {repo}, pull request #{pr_number}"

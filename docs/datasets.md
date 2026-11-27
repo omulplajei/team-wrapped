@@ -53,7 +53,7 @@ Metric: any. Not time-bucketed. A repository is "touched" when it has at least o
 | `summary.activity_by_weekday`, `summary.activity_by_hour` | counts in the configured timezone |
 
 ## curiosities
-Each dataset is a **list** of up to N records, best first (`value`, plus the fields named below). Not time-bucketed, but limited to the scope and window. Scenes show the first record. Records never carry people or PR titles.
+Each dataset is a **list** of up to N records, best first (`value`, plus the fields named below). Not time-bucketed, but limited to the scope and window. Scenes show the first record. Records never carry people or PR titles. A dataset is empty (or absent) when there is nothing to report: records with a `value` of 0 or null fields are never written. Every record carries all the fields of its row. Dates and months are calendar dates in the configured time zone.
 
 | Dataset | Record fields | Metric | Enriched |
 |---|---|---|---|

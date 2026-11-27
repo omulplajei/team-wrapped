@@ -24,8 +24,9 @@ def make_data(tmp_path, partial=()):
         {"scopes": {"all": {"totals": {"commits": 5}}}}))
     (d / "repos.json").write_text(json.dumps(
         {"scopes": {"all": {"touched": {"total": 2, "list": [{"name": "a"}, {"name": "b"}]}}}}))
-    (d / "curiosities.json").write_text(json.dumps(
-        {"scopes": {"all": {"busiest_day": [{"value": 87, "date": "2026-03-14", "merged_prs": 12}]}}}))
+    if not (d / "curiosities.json").exists():     # a test may write its own first
+        (d / "curiosities.json").write_text(json.dumps(
+            {"scopes": {"all": {"busiest_day": [{"value": 87, "date": "2026-03-14", "merged_prs": 12}]}}}))
     (d / "meta.json").write_text(json.dumps({"partial_datasets": list(partial)}))
     return DerivedData(tmp_path)
 
@@ -115,8 +116,8 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
         "curiosity-longest-streak": "supported",
         "curiosity-longest-conversation": "supported",
         "curiosity-most-reviewed-pr": "supported",
-        "curiosity-most-commits-pr": "supported",
-        "curiosity-spring-cleaning": "supported",
+        "curiosity-most-commits-pr": "partial",
+        "curiosity-spring-cleaning": "partial",
         "how-many-of-us": "supported",
     }
     assert resolved.report.ok
@@ -136,7 +137,10 @@ def test_every_curiosity_scene_file_is_valid_on_the_sample(repo_root, sample_roo
     (data / "scripts" / "all-curiosities.yml").write_text(
         "id: all-curiosities\nscope: all\nscenes:\n" + "".join(f"  - scene: {i}\n" for i in ids))
     resolved = resolve_and_validate("all-curiosities", repo_root, data)
-    assert {r.scene_id: r.status for r in resolved.report.results} == {i: "supported" for i in ids}
+    statuses = {r.scene_id: r.status for r in resolved.report.results}
+    assert all(v in ("supported", "partial") for v in statuses.values())
+    assert sorted(i for i, v in statuses.items() if v == "partial") == [
+        "curiosity-most-commits-pr", "curiosity-spring-cleaning"]
 
 
 def test_top_level_value_is_a_literal_for_types_that_do_not_require_it(tmp_path):
@@ -223,3 +227,33 @@ def test_curiosity_records_must_resolve_to_a_list(tmp_path):
     assert "records 'curiosities.busiest_day.value' does not resolve to a list" in report.results[0].problems
     report = run(tmp_path / "c", CUR_REQ, params=dict(ok, records="curiosities.nope"), type_="curiosity")
     assert "records 'curiosities.nope' does not resolve to a list" in report.results[0].problems
+
+
+def _records_run(tmp_path, records, requires=CUR_REQ, params_extra=None):
+    (tmp_path / "derived").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "derived" / "curiosities.json").write_text(json.dumps(
+        {"scopes": {"all": {"busiest_day": records}}}))
+    params = {"teaser": "T", "records": "curiosities.busiest_day", "unit": "commits", **(params_extra or {})}
+    return run(tmp_path, requires, params=params, type_="curiosity").results[0]
+
+
+def test_curiosity_first_record_must_carry_every_required_field(tmp_path):
+    bad = _records_run(tmp_path / "a", [{"value": 5}, {"value": 4, "date": "2026-03-14"}])
+    assert bad.status == "unsupported"
+    assert "records 'curiosities.busiest_day': first record is missing field 'date'" in bad.problems
+    ok = _records_run(tmp_path / "b", [{"value": 5, "date": "2026-03-14"}])
+    assert ok.status == "supported"
+
+
+def test_curiosity_first_record_value_must_be_a_number(tmp_path):
+    bad = _records_run(tmp_path / "a", [{"value": "87", "date": "2026-03-14"}])
+    assert bad.status == "unsupported"
+    assert "records 'curiosities.busiest_day': first record's 'value' is not a number" in bad.problems
+    keyed = _records_run(tmp_path / "b", [{"value": 1, "merged_prs": "x", "date": "d"}],
+                         params_extra={"value_key": "merged_prs"})
+    assert "records 'curiosities.busiest_day': first record's 'merged_prs' is not a number" in keyed.problems
+
+
+def test_curiosity_records_must_contain_objects(tmp_path):
+    bad = _records_run(tmp_path / "a", [5, 6])
+    assert "records 'curiosities.busiest_day' must contain objects" in bad.problems
