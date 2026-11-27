@@ -31,7 +31,7 @@ def test_derive_adds_one_scope_per_group():
 def test_sample_config_matches_the_sample_derived_file(repo_root, sample_root):
     derived = derive_repos(load_config(sample_root / "config.yml"))
     shipped = json.loads((sample_root / "derived" / "repos.json").read_text())
-    assert derived["scopes"] == shipped["scopes"]       # the shipped sample stays consistent with its config
+    assert derived == shipped       # the shipped sample stays consistent with its config
 
 
 def test_write_repos_creates_the_file(tmp_path):
@@ -56,3 +56,24 @@ def test_cli_derive_repos_reports_errors(repo_root, tmp_path, capsys):
     code = main(["derive-repos", "--root", str(repo_root), "--data", str(tmp_path / "data")])
     assert code == 2
     assert "not found" in capsys.readouterr().err
+
+
+def test_sorting_is_case_insensitive():
+    out = derive_repos(config(["b", "A", "c"]))
+    assert [r["name"] for r in out["scopes"]["all"]["touched"]["list"]] == ["A", "b", "c"]
+    out = derive_repos(config(["B", "a"]))
+    assert [r["name"] for r in out["scopes"]["all"]["touched"]["list"]] == ["a", "B"]
+
+
+def test_failed_write_leaves_existing_file_untouched(tmp_path, monkeypatch):
+    path = write_repos(config(["a"]), tmp_path)
+    before = path.read_text()
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("team_wrapped.derive.json.dumps", boom)
+    with pytest.raises(RuntimeError):
+        write_repos(config(["a", "b"]), tmp_path)
+    assert path.read_text() == before
+    assert list(path.parent.glob("*.tmp")) == []

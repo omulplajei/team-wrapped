@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from .config import Config
 
 
 def _touched(names) -> dict:
-    ordered = sorted(names)
+    ordered = sorted(names, key=lambda n: (n.lower(), n))
     return {"touched": {"total": len(ordered), "list": [{"name": n} for n in ordered]}}
 
 
@@ -27,5 +28,11 @@ def derive_repos(config: Config) -> dict:
 def write_repos(config: Config, data_root) -> Path:
     path = Path(data_root) / "derived" / "repos.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(derive_repos(config), indent=2) + "\n")
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_text(json.dumps(derive_repos(config), indent=2) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     return path

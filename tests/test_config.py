@@ -60,3 +60,69 @@ def test_missing_file_and_bad_yaml(tmp_path):
         load_config(tmp_path / "nope.yml")
     with pytest.raises(LoadError, match="config.yml"):
         load_config(write(tmp_path, "org: [unclosed\n"))
+
+
+@pytest.mark.parametrize("value", ["true", "null", "123"])
+def test_non_string_repo_names_get_a_quote_hint(tmp_path, value):
+    with pytest.raises(LoadError, match=r"YAML read it as .*put quotes around it"):
+        load_config(write(tmp_path, f"org: o\nrepos: [{value}]\n"))
+
+
+@pytest.mark.parametrize("name", [".", "..", "..."])
+def test_dot_only_repo_names_are_rejected(tmp_path, name):
+    with pytest.raises(LoadError, match="not a valid repository name"):
+        load_config(write(tmp_path, f"org: o\nrepos: ['{name}']\n"))
+
+
+@pytest.mark.parametrize("name", [".", "..", "..."])
+def test_dot_only_group_names_are_rejected(tmp_path, name):
+    with pytest.raises(LoadError, match="group name"):
+        load_config(write(tmp_path, f"org: o\nrepos: [a]\ngroups: {{'{name}': [a]}}\n"))
+
+
+@pytest.mark.parametrize("groups, message", [
+    ("{g: a}", "empty or not a list"),
+    ("{g: [[a]]}", "invalid member"),
+    ("{g: [{x: 1}]}", "invalid member"),
+    ("{g: [a, a]}", "lists 'a' twice"),
+])
+def test_bad_group_members_are_rejected(tmp_path, groups, message):
+    with pytest.raises(LoadError, match=message):
+        load_config(write(tmp_path, f"org: o\nrepos: [a]\ngroups: {groups}\n"))
+
+
+@pytest.mark.parametrize("key", ["since", "until"])
+@pytest.mark.parametrize("value", ["yesterday", "2026-13-01", "5", "[1]", "true"])
+def test_bad_dates_are_rejected(tmp_path, key, value):
+    with pytest.raises(LoadError, match=f"since/until must be a date like 2026-01-31"):
+        load_config(write(tmp_path, f"org: o\nrepos: [a]\n{key}: {value}\n"))
+
+
+def test_since_after_until_is_rejected(tmp_path):
+    with pytest.raises(LoadError, match="since"):
+        load_config(write(tmp_path, "org: o\nrepos: [a]\nsince: 2026-02-01\nuntil: 2026-01-01\n"))
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("2026-01-01", "2026-01-01"),
+    ("'2026-01-01'", "2026-01-01"),
+    ("2026-01-01 10:00:00", "2026-01-01"),
+])
+def test_valid_date_forms(tmp_path, value, expected):
+    config = load_config(write(tmp_path, f"org: o\nrepos: [a]\nsince: {value}\nuntil: 2027-01-01\n"))
+    assert config.since == expected
+
+
+def test_integer_key_with_unknown_key_is_a_load_error(tmp_path):
+    with pytest.raises(LoadError, match="unknown key"):
+        load_config(write(tmp_path, "org: o\nrepos: [a]\n1: x\nrepoz: y\n"))
+
+
+def test_empty_groups_mapping_is_accepted(tmp_path):
+    assert load_config(write(tmp_path, "org: o\nrepos: [a]\ngroups: {}\n")).groups == {}
+
+
+def test_errors_name_the_config_file(tmp_path):
+    path = write(tmp_path, "org: o\nrepos: [a]\ngroups: {g: [b]}\n")
+    with pytest.raises(LoadError, match="config.yml"):
+        load_config(path)
