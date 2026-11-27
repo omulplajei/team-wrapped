@@ -1,0 +1,37 @@
+# Sample collection config: the same layout as your private data/config.yml.
+# `derive-repos` turns it into data/derived/repos.json for the repositories scene.
+org: sample-org
+since: 2026-01-01
+until: 2026-12-31
+repos:
+  - sample-analytics
+  - sample-api
+  - sample-auth
+  - sample-billing
+  - sample-cli
+  - sample-design-system
+  - sample-docs
+  - sample-gateway
+  - sample-infra
+  - sample-mobile
+  - sample-notifications
+  - sample-sdk
+  - sample-search
+  - sample-web
+groups:
+  alpha:
+    - sample-api
+    - sample-auth
+    - sample-billing
+    - sample-docs
+    - sample-gateway
+    - sample-mobile
+    - sample-notifications
+    - sample-search
+    - sample-web
+  beta:
+    - sample-analytics
+    - sample-cli
+    - sample-design-system
+    - sample-infra
+    - sample-sdk

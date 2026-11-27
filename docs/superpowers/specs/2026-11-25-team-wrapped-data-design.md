@@ -78,6 +78,8 @@ team-wrapped/
 | `avatars.download` | download contributor avatars (default `true`) |
 | `reviewer_pairs` | author-to-reviewer pair statistic; default `false` |
 
+The loader (`config.py`) validates `org`, `repos`, `groups`, `since` and `until` today; the other keys are accepted and validated when the collector uses them.
+
 `data-sample/config.yml` documents every option. Bad config (unknown metric, malformed dates, empty repo list) fails at startup with a clear message.
 
 ## 5. Raw records
@@ -181,7 +183,7 @@ Not a separate family. Where `groups` is configured, every statistic above is al
 - **Field paths.** A field such as `total_net` is a key of the dataset object. A path such as `list.kind` means the key `kind` on the items of the list `list`. A field that is absent on some items (for example `list.login` on unlinked contributors) counts as present if any item has it.
 - **Time-bucketed datasets.** These hold one series per bucket size, keyed `day`, `week`, `month`, `quarter` or `year`. Each series is a list of `{"start": "<date>", ...fields}` entries ordered by `start`. The sample data does not exercise this shape yet, so it will be confirmed by the first scene that needs a time series.
 - **Curiosities.** A list of up to `top_n` records, each holding `value`, `repo` and a `pr_number` or `sha`, sorted by `value` descending.
-- **Repositories touched.** `repos.json` holds `touched` with `total` and `list` (items `{"name": ...}`) per scope. A repository is touched when it has at least one commit (author date), pull request (created or merged date), review (submitted date) or comment (created date) inside the window, from any author including bots, among the enabled metrics. `total` equals the length of `list`, and `list` is ordered alphabetically by `name`. The dataset is partial when any in-scope repository's status for an enabled metric is not complete. An empty list counts as missing data for scenes that require `list.name`, so scripts mark such scenes `on_missing_data: skip`.
+- **Repositories touched.** `repos.json` holds `touched` with `total` and `list` (items `{"name": ...}`) per scope. A repository is touched when it has at least one commit (author date), pull request (created or merged date), review (submitted date) or comment (created date) inside the window, from any author including bots, among the enabled metrics. `total` equals the length of `list`, and `list` is ordered alphabetically by `name`. The dataset is partial when any in-scope repository's status for an enabled metric is not complete. An empty list counts as missing data for scenes that require `list.name`, so scripts mark such scenes `on_missing_data: skip`. Until the aggregator exists, `derive-repos` writes this file from the configured `repos` and `groups` (every configured repository counts as touched) and marks it with `"basis": "configuration"`.
 - **Paths to files.** `avatar_file` is relative to the data root (`data/` or `data-sample/`).
 - **Privacy.** Derived files never contain author emails (section 6).
 - **Metadata.** `meta.json` has no `scopes`. It holds `generated_at`, `period`, per-repo and per-metric `status`, `enrichment_coverage`, `partial_datasets` and the resolved `groups`.
@@ -202,6 +204,7 @@ Collection is expected to take several passes because of API rate limits.
 - `collect`: fetch raw data, contributor registry and avatars
 - `aggregate`: build `data/derived/`
 - `status`: per repo and metric, shows complete, partial, never-run or failed, with last sync and coverage dates
+- `derive-repos`: write `data/derived/repos.json` from `data/config.yml` (interim, see section 7.6)
 
 ## 9. Metadata (`data/derived/meta.json`)
 

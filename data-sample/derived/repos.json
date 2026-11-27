@@ -3,6 +3,7 @@
     "since": "2026-01-01",
     "until": "2026-12-31"
   },
+  "basis": "configuration",
   "scopes": {
     "all": {
       "touched": {
@@ -83,6 +84,28 @@
           },
           {
             "name": "sample-web"
+          }
+        ]
+      }
+    },
+    "group:beta": {
+      "touched": {
+        "total": 5,
+        "list": [
+          {
+            "name": "sample-analytics"
+          },
+          {
+            "name": "sample-cli"
+          },
+          {
+            "name": "sample-design-system"
+          },
+          {
+            "name": "sample-infra"
+          },
+          {
+            "name": "sample-sdk"
           }
         ]
       }

@@ -56,6 +56,16 @@ It prints the page path when it is done, and stops with a message (exit code 1 o
 
 A script can set `music: {file: theme.mp3, volume: 0.3}`. The file is read from `data/assets/` (or give an `https://` URL). Music files are never committed.
 
+## Repositories config
+
+Your private `data/config.yml` lists the GitHub organisation, the repositories and optional groups (see `data-sample/config.yml`). `derive-repos` turns it into the dataset the repositories scene needs:
+
+```bash
+PYTHONPATH=src python3 -m team_wrapped derive-repos --data data
+```
+
+For now every configured repository counts as "touched"; the file is marked `"basis": "configuration"` until activity is collected from GitHub.
+
 ## Themes
 
 `build` takes `--theme NAME` (or a `theme:` line in a script). A theme is a folder `themes/<name>/` with a `theme.yml` (colours, font, logo, backdrop images) and its asset files; put your own in `data/themes/<name>/`, which is git-ignored, so brand assets stay out of the repo. See section 14 of the spec for the format.

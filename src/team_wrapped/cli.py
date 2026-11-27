@@ -5,6 +5,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from .config import load_config
+from .derive import write_repos
 from .scenes.build import BuildError, build
 from .scenes.loader import LoadError
 from .scenes.validate import format_report, resolve_and_validate
@@ -32,6 +34,14 @@ def _cmd_build(args) -> int:
     return 0
 
 
+def _cmd_derive_repos(args) -> int:
+    data_root = Path(args.root) / args.data
+    config = load_config(data_root / "config.yml")
+    path = write_repos(config, data_root)
+    print(f"wrote {path}: {len(config.repos)} repositories, {len(config.groups)} groups")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="team-wrapped")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -46,8 +56,13 @@ def main(argv: list[str] | None = None) -> int:
         if name == "build":
             p.add_argument("--out", default="dist", help="output folder under the root (default: dist)")
             p.add_argument("--theme", default=None, help="theme name")
+    derive = sub.add_parser("derive-repos", help="write derived/repos.json from the collection config")
+    derive.add_argument("--root", default=".", help="repository root (default: current directory)")
+    derive.add_argument("--data", default="data", help="data folder under the root (default: data)")
     args = parser.parse_args(argv)
     try:
+        if args.command == "derive-repos":
+            return _cmd_derive_repos(args)
         if args.command == "validate-script":
             return _cmd_validate(args)
         return _cmd_build(args)
