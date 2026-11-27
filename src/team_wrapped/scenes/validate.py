@@ -97,7 +97,7 @@ def validate_script(script: Script, scenes: dict, derived: DerivedData,
                 problems.append(f"value '{ref}' does not resolve to required data")
             elif isinstance(value, bool) or not isinstance(value, (int, float)):
                 problems.append(f"value '{ref}' is not a number")
-        for list_param in ("names", "records"):
+        for list_param in ("names", "records", "groups"):
             list_ref = scene.params.get(list_param)
             if isinstance(list_ref, str) and not isinstance(resolve_ref(datasets, list_ref), list):
                 problems.append(f"{list_param} '{list_ref}' does not resolve to a list")
@@ -119,6 +119,23 @@ def validate_script(script: Script, scenes: dict, derived: DerivedData,
                     number = first.get(key)
                     if isinstance(number, bool) or not isinstance(number, (int, float)):
                         problems.append(f"records '{records_ref}': first record's '{key}' is not a number")
+
+        groups_ref = scene.params.get("groups")
+        if isinstance(groups_ref, str):
+            groups = resolve_ref(datasets, groups_ref)
+            if isinstance(groups, list) and groups:
+                first = groups[0]
+                if not isinstance(first, dict):
+                    problems.append(f"groups '{groups_ref}' must contain objects")
+                else:
+                    needed = {"name", "commits"} | {f for req in scene.requires if req["dataset"] == groups_ref
+                                                    for f in req.get("fields", [])}
+                    for field in sorted(needed):
+                        if field not in first:
+                            problems.append(f"groups '{groups_ref}': first group is missing field '{field}'")
+        window_ref = scene.params.get("window")
+        if isinstance(window_ref, str) and not isinstance(resolve_ref(datasets, window_ref), dict):
+            problems.append(f"window '{window_ref}' does not resolve to an object")
 
         status = "unsupported" if problems else ("partial" if partial else "supported")
         results.append(SceneResult(

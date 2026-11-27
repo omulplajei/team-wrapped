@@ -6,7 +6,7 @@ from aggregate_helpers import commit, pull_request, review
 from team_wrapped import aggregate as agg
 from team_wrapped.cli import main
 
-FAMILY_FILES = ["contributors.json", "repos.json", "summary.json", "delivery_volume.json", "curiosities.json"]
+FAMILY_FILES = ["contributors.json", "repos.json", "summary.json", "delivery_volume.json", "curiosities.json", "commit_flow.json"]
 CONFIG = """org: sample-org
 repos: [alpha-api, beta-web]
 groups:

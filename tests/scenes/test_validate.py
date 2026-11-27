@@ -257,3 +257,38 @@ def test_curiosity_first_record_value_must_be_a_number(tmp_path):
 def test_curiosity_records_must_contain_objects(tmp_path):
     bad = _records_run(tmp_path / "a", [5, 6])
     assert "records 'curiosities.busiest_day' must contain objects" in bad.problems
+
+
+FLOW_REQ = [{"dataset": "commit_flow.groups", "fields": ["name", "commits"]},
+            {"dataset": "commit_flow.window", "fields": ["days", "start"]}]
+FLOW_PARAMS = {"groups": "commit_flow.groups", "window": "commit_flow.window"}
+FLOW_TYPES = {"flow": SceneType("flow", 10.0, ["groups", "window"], Path("."))}
+
+
+def _flow_run(tmp_path, flow, params=None):
+    data = make_data(tmp_path)
+    (tmp_path / "derived" / "commit_flow.json").write_text(json.dumps({"scopes": {"all": flow}}))
+    scene = Scene(id="s", type="flow", title="S", requires=FLOW_REQ, params=params or FLOW_PARAMS)
+    script = Script(id="x", title="X", period=2026, scope="all", scenes=[Entry(scene="s")])
+    catalog = CATALOG | {"commit_flow.groups", "commit_flow.window"}
+    return validate_script(script, {"s": scene}, data, catalog, FLOW_TYPES).results[0]
+
+
+GOOD_FLOW = {"groups": [{"name": "alpha", "label": "Alpha", "total": 1, "commits": [[0, 5]]}],
+             "window": {"days": 365, "start": "2026-01-01"}}
+
+
+def test_commit_flow_groups_and_window_validate(tmp_path):
+    assert _flow_run(tmp_path, GOOD_FLOW).status == "supported"
+
+
+def test_commit_flow_params_must_resolve(tmp_path):
+    result = _flow_run(tmp_path, GOOD_FLOW, {"groups": "commit_flow.window", "window": "commit_flow.groups"})
+    assert "groups 'commit_flow.window' does not resolve to a list" in result.problems
+    assert "window 'commit_flow.groups' does not resolve to an object" in result.problems
+
+
+def test_commit_flow_first_group_needs_its_fields(tmp_path):
+    result = _flow_run(tmp_path, dict(GOOD_FLOW, groups=[{"name": "alpha"}]))
+    assert "groups 'commit_flow.groups': first group is missing field 'commits'" in result.problems
+    assert "groups 'commit_flow.groups' must contain objects" in _flow_run(tmp_path, dict(GOOD_FLOW, groups=[1])).problems

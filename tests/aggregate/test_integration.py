@@ -59,7 +59,7 @@ def test_aggregate_output_feeds_the_year_wrapped_script(fx, repo_root, tmp_path)
     aggregate(fx.root, now=NOW)
     derived = fx.root / "derived"
     assert sorted(p.name for p in derived.iterdir()) == [
-        "contributors.json", "curiosities.json", "delivery_volume.json", "meta.json", "repos.json", "summary.json"]
+        "commit_flow.json", "contributors.json", "curiosities.json", "delivery_volume.json", "meta.json", "repos.json", "summary.json"]
     for name in ("contributors", "repos", "summary", "delivery_volume", "curiosities"):
         assert list(json.loads((derived / f"{name}.json").read_text())["scopes"]) == ["all", "group:alpha", "group:beta"]
     meta = json.loads((derived / "meta.json").read_text())

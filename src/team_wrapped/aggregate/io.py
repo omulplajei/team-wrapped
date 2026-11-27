@@ -6,13 +6,33 @@ import os
 from pathlib import Path
 
 
+def _is_pair_list(value) -> bool:
+    return (isinstance(value, list) and bool(value)
+            and all(isinstance(p, list) and p and all(isinstance(n, (int, float)) and not isinstance(n, bool) for n in p)
+                    for p in value))
+
+
+def dumps(value, level: int = 0) -> str:
+    """`json.dumps(value, indent=2)`, except that a list of number lists (commit_flow's `[day, lines]` pairs) puts
+    one pair on each line, so a year of commits stays small."""
+    pad, inner = "  " * level, "  " * (level + 1)
+    if _is_pair_list(value):
+        return "[\n" + ",\n".join(inner + json.dumps(p) for p in value) + "\n" + pad + "]"
+    if isinstance(value, dict) and value:
+        items = [f"{inner}{json.dumps(k)}: {dumps(v, level + 1)}" for k, v in value.items()]
+        return "{\n" + ",\n".join(items) + "\n" + pad + "}"
+    if isinstance(value, list) and value:
+        return "[\n" + ",\n".join(inner + dumps(v, level + 1) for v in value) + "\n" + pad + "]"
+    return json.dumps(value)
+
+
 def write_json(path, payload) -> Path:
     """Write via a temporary file and os.replace, so readers never see half a file."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
     try:
-        tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        tmp.write_text(dumps(payload) + "\n", encoding="utf-8")
         os.replace(tmp, path)
     except BaseException:
         tmp.unlink(missing_ok=True)

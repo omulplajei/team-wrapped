@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable
 
 from ..config import load_config
+from .commit_flow import build_commit_flow
 from .context import Context
 from .contributors import build_contributors
 from .curiosities import build_curiosities
@@ -22,7 +23,7 @@ from .summary import build_summary
 @dataclass(frozen=True)
 class Family:
     """One derived file. `build(ctx)` returns `(scopes, partial_dataset_names)`: `scopes` has one entry per key of
-    `ctx.scopes`, each holding that family's datasets; `partial_dataset_names` lists datasets (`family.name`, or
+    `ctx.scopes`, or only `all` for a family such as `commit_flow`, each holding that family's datasets; `partial_dataset_names` lists datasets (`family.name`, or
     the bare family name for `contributors`) computed from incomplete data. `extra` is merged into the file's
     top level, between `period` and `scopes`."""
     name: str
@@ -37,6 +38,7 @@ FAMILIES = [
     Family("summary", build_summary),
     Family("delivery_volume", build_delivery_volume),
     Family("curiosities", build_curiosities),
+    Family("commit_flow", build_commit_flow),
 ]
 
 
