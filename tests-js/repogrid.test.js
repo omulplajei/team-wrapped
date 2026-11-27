@@ -70,7 +70,8 @@ test("no repositories shows the heading with 0 and no grid", () => {
   const { tl, container } = render(PARAMS, dataFor([]));
   finishCountUps(tl);
   assert.strictEqual(find(container, "tw-repos-count")[0].textContent, "0");
-  assert.strictEqual(find(container, "tw-folders").length, 0);
+  assert.strictEqual(find(container, "tw-folder").length, 0);
+  assert.strictEqual(container.children[0].children.length, 1);
 });
 
 test("a missing count shows a dash", () => {
