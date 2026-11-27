@@ -74,7 +74,7 @@
     let when = at + duration;
     pauses.forEach((pause, i) => {
       when += pause;
-      tl.to(state, { v: main + i + 1, duration: 0.05, ease: "none", onUpdate: show }, when);
+      tl.to(state, { v: main + i + 1, duration: Math.min(0.05, pause), ease: "none", onUpdate: show }, when);
     });
     return tl;
   }

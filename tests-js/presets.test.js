@@ -178,3 +178,12 @@ test("invalid tail entries are ignored and the beats never exceed the total", ()
   assert.deepStrictEqual(small.calls.map((c) => c.vars.v), [0, 1, 2]);                  // capped at the total
   assert.deepStrictEqual(countCalls(10, 0, 1, "slow").calls.map((c) => c.vars.v), [10]);
 });
+
+test("a beat is never longer than the pause before it, so beats cannot overlap", () => {
+  const { calls } = countCalls(10, 0, 1, [0.01, 0.5]);
+  const beats = calls.slice(1);
+  assert.deepStrictEqual(beats.map((c) => c.vars.duration), [0.01, 0.05]);
+  beats.forEach((c, i) => {
+    if (i > 0) assert.ok(c.at >= beats[i - 1].at + beats[i - 1].vars.duration - 1e-9);
+  });
+});
