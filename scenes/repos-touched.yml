@@ -1,0 +1,12 @@
+id: repos-touched
+title: Repositories touched
+type: repogrid
+requires:
+  - dataset: repos.touched
+    fields: [total, list.name]
+    allow_partial: false
+params:
+  heading: "Across {count} repositories"
+  heading_one: "Across {count} repository"
+  value: repos.touched.total
+  names: repos.touched.list

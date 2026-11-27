@@ -102,6 +102,7 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
     assert statuses == {
         "we-shipped": "supported",
         "we-looked-after-each-other": "supported",
+        "repos-touched": "supported",
         "we-changed-the-code": "partial",
         "year-in-numbers": "partial",
         "how-many-of-us": "supported",
@@ -111,6 +112,7 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
     assert "year-in-numbers: partial" in text
     assert "we-changed-the-code: partial" in text
     assert "how-many-of-us: supported" in text
+    assert "repos-touched: supported" in text
 
 
 def test_top_level_value_is_a_literal_for_types_that_do_not_require_it(tmp_path):

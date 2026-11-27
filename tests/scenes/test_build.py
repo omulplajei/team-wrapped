@@ -33,14 +33,16 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     payload = read_payload(result.index)
     scenes = {s["id"]: s for s in payload["scenes"]}
     assert [s["id"] for s in payload["scenes"]] == [
-        "we-shipped", "we-looked-after-each-other", "we-changed-the-code",
-        "year-in-numbers", "how-many-of-us",
+        "we-shipped", "we-looked-after-each-other", "repos-touched",
+        "we-changed-the-code", "year-in-numbers", "how-many-of-us",
     ]
-    assert [s["duration"] for s in payload["scenes"]] == [6.0, 6.0, 6.0, 8.0, 10.0]
+    assert [s["duration"] for s in payload["scenes"]] == [6.0, 6.0, 8.0, 6.0, 8.0, 10.0]
     assert scenes["we-shipped"]["partial"] == []
     assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
     assert scenes["how-many-of-us"]["partial"] == []
+    assert scenes["repos-touched"]["partial"] == []
+    assert scenes["repos-touched"]["data"]["repos.touched"]["total"] == 14
     assert scenes["we-shipped"]["data"]["summary.totals"]["commits"] == 1240
     assert payload["script"]["music"] is None
 
@@ -48,6 +50,7 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     assert 'TeamWrapped.sceneTypes["stats"]' in html
     assert 'TeamWrapped.sceneTypes["headcount"]' in html
     assert 'TeamWrapped.sceneTypes["bignumber"]' in html
+    assert 'TeamWrapped.sceneTypes["repogrid"]' in html
     assert 'TeamWrapped.sceneTypes["message"]' not in html   # only used types are inlined
     assert "export default" not in html
 
@@ -58,7 +61,7 @@ def test_build_skips_both_line_data_scenes_when_lines_are_missing(repo_root, sam
     result = build("year-wrapped", repo_root, data, tmp_path / "dist")
     assert result.skipped == ["we-changed-the-code", "year-in-numbers"]
     assert [s["id"] for s in read_payload(result.index)["scenes"]] == [
-        "we-shipped", "we-looked-after-each-other", "how-many-of-us"]
+        "we-shipped", "we-looked-after-each-other", "repos-touched", "how-many-of-us"]
 
 
 def test_build_fails_when_a_scene_is_unsupported(repo_root, sample_root, tmp_path):

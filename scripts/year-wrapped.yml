@@ -5,6 +5,7 @@ scope: all            # all, or a group name
 scenes:
   - scene: we-shipped
   - scene: we-looked-after-each-other
+  - scene: repos-touched
   - scene: we-changed-the-code
     on_missing_data: skip   # needs enriched line data; the rest still plays without it
   - scene: year-in-numbers  # the recap grid of all numbers
