@@ -8,6 +8,5 @@ requires:
 params:
   heading: "We look after each other"
   steps:
-    - {value: summary.totals.reviews, label: "Pull requests"}
-    - {text: "and left"}
-    - {value: summary.totals.comments, label: "Comments"}
+    - {lead: "We raised", value: summary.totals.reviews, label: "Pull requests"}
+    - {lead: "and left", value: summary.totals.comments, label: "Comments"}
