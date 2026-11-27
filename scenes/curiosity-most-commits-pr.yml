@@ -1,0 +1,12 @@
+id: curiosity-most-commits-pr
+title: The pull request that kept going
+type: curiosity
+requires:
+  - dataset: curiosities.most_commits_pr
+    fields: [value, repo, pr_number]
+    allow_partial: true  # needs enriched pull request records
+params:
+  teaser: "The pull request that kept going"
+  records: curiosities.most_commits_pr
+  unit: "commits in one pull request"
+  context: "in {repo}, pull request #{pr_number}"

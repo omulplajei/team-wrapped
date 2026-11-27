@@ -1,0 +1,12 @@
+id: curiosity-busiest-month
+title: Our busiest month
+type: curiosity
+requires:
+  - dataset: curiosities.busiest_month
+    fields: [value, month, merged_prs]
+    allow_partial: false
+params:
+  teaser: "Our busiest month"
+  records: curiosities.busiest_month
+  unit: "commits"
+  context: "in {month}, with {merged_prs} pull requests merged"

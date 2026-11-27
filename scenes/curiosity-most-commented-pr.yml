@@ -1,0 +1,12 @@
+id: curiosity-most-commented-pr
+title: The most talked-about pull request
+type: curiosity
+requires:
+  - dataset: curiosities.most_commented_pr
+    fields: [value, repo, pr_number]
+    allow_partial: false
+params:
+  teaser: "The most talked-about pull request"
+  records: curiosities.most_commented_pr
+  unit: "comments"
+  context: "in {repo}, pull request #{pr_number}"

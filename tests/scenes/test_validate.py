@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 from team_wrapped.scenes.derived import DerivedData
@@ -109,6 +110,13 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
         "repos-touched": "supported",
         "we-changed-the-code": "partial",
         "year-in-numbers": "partial",
+        "curiosity-busiest-month": "supported",
+        "curiosity-busiest-day": "supported",
+        "curiosity-longest-streak": "supported",
+        "curiosity-longest-conversation": "supported",
+        "curiosity-most-reviewed-pr": "supported",
+        "curiosity-most-commits-pr": "supported",
+        "curiosity-spring-cleaning": "supported",
         "how-many-of-us": "supported",
     }
     assert resolved.report.ok
@@ -117,6 +125,18 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
     assert "we-changed-the-code: partial" in text
     assert "how-many-of-us: supported" in text
     assert "repos-touched: supported" in text
+
+
+def test_every_curiosity_scene_file_is_valid_on_the_sample(repo_root, sample_root, tmp_path):
+    ids = sorted(p.stem for p in (repo_root / "scenes").glob("curiosity-*.yml"))
+    assert len(ids) == 9
+    data = tmp_path / "data"
+    shutil.copytree(sample_root, data)
+    (data / "scripts").mkdir(exist_ok=True)
+    (data / "scripts" / "all-curiosities.yml").write_text(
+        "id: all-curiosities\nscope: all\nscenes:\n" + "".join(f"  - scene: {i}\n" for i in ids))
+    resolved = resolve_and_validate("all-curiosities", repo_root, data)
+    assert {r.scene_id: r.status for r in resolved.report.results} == {i: "supported" for i in ids}
 
 
 def test_top_level_value_is_a_literal_for_types_that_do_not_require_it(tmp_path):

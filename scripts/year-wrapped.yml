@@ -7,7 +7,20 @@ scenes:
   - scene: we-looked-after-each-other  # 2. the work
   - scene: year-in-numbers             # 3. the numbers (recap grid)
     on_missing_data: skip   # needs enriched line data; the rest still plays without it
-  # 4. curiosities will go here
+  - scene: curiosity-busiest-month        # 4. curiosities: rhythm...
+    on_missing_data: skip   # until the aggregator produces it, the scene is skipped
+  - scene: curiosity-busiest-day
+    on_missing_data: skip   # until the aggregator produces it, the scene is skipped
+  - scene: curiosity-longest-streak
+    on_missing_data: skip   # until the aggregator produces it, the scene is skipped
+  - scene: curiosity-longest-conversation   # ...collaboration...
+    on_missing_data: skip   # until the aggregator produces it, the scene is skipped
+  - scene: curiosity-most-reviewed-pr
+    on_missing_data: skip   # until the aggregator produces it, the scene is skipped
+  - scene: curiosity-most-commits-pr        # ...and the big changes
+    on_missing_data: skip   # until the aggregator produces it, the scene is skipped
+  - scene: curiosity-spring-cleaning
+    on_missing_data: skip   # until the aggregator produces it, the scene is skipped
   - scene: repos-touched               # 5. extent: the repositories...
     on_missing_data: skip   # an empty repo list counts as missing data, so a quiet scope skips the scene
   - scene: we-changed-the-code         # ...and the lines of change

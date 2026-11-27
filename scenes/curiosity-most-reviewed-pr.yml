@@ -1,0 +1,12 @@
+id: curiosity-most-reviewed-pr
+title: The most reviewed pull request
+type: curiosity
+requires:
+  - dataset: curiosities.most_reviewed_pr
+    fields: [value, repo, pr_number]
+    allow_partial: false
+params:
+  teaser: "The most reviewed pull request"
+  records: curiosities.most_reviewed_pr
+  unit: "reviews"
+  context: "in {repo}, pull request #{pr_number}"

@@ -1,0 +1,12 @@
+id: curiosity-busiest-day
+title: Our busiest day
+type: curiosity
+requires:
+  - dataset: curiosities.busiest_day
+    fields: [value, date, merged_prs]
+    allow_partial: false
+params:
+  teaser: "Our busiest day"
+  records: curiosities.busiest_day
+  unit: "commits"
+  context: "on {date}, with {merged_prs} pull requests merged"

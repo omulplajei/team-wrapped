@@ -1,0 +1,12 @@
+id: curiosity-longest-conversation
+title: The longest conversation
+type: curiosity
+requires:
+  - dataset: curiosities.longest_comment_chain
+    fields: [value, repo, pr_number]
+    allow_partial: false
+params:
+  teaser: "The longest conversation"
+  records: curiosities.longest_comment_chain
+  unit: "comments in one review thread"
+  context: "in {repo}, pull request #{pr_number}"

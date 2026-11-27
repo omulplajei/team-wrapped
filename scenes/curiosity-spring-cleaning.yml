@@ -1,0 +1,12 @@
+id: curiosity-spring-cleaning
+title: Spring cleaning
+type: curiosity
+requires:
+  - dataset: curiosities.most_lines_deleted_pr
+    fields: [value, repo, pr_number]
+    allow_partial: true  # needs enriched pull request records
+params:
+  teaser: "Spring cleaning"
+  records: curiosities.most_lines_deleted_pr
+  unit: "lines deleted in one pull request"
+  context: "in {repo}, pull request #{pr_number}"

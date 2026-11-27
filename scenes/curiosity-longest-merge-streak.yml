@@ -1,0 +1,12 @@
+id: curiosity-longest-merge-streak
+title: Our longest merge streak
+type: curiosity
+requires:
+  - dataset: curiosities.longest_merge_streak
+    fields: [value, from, to]
+    allow_partial: false
+params:
+  teaser: "Our longest merge streak"
+  records: curiosities.longest_merge_streak
+  unit: "days in a row with a merged pull request"
+  context: "from {from} to {to}"

@@ -1,0 +1,12 @@
+id: curiosity-longest-streak
+title: Our longest streak
+type: curiosity
+requires:
+  - dataset: curiosities.longest_commit_streak
+    fields: [value, from, to]
+    allow_partial: false
+params:
+  teaser: "Our longest streak"
+  records: curiosities.longest_commit_streak
+  unit: "days in a row with a commit"
+  context: "from {from} to {to}"
