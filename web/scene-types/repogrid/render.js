@@ -62,12 +62,22 @@ export default {
       presets.bubbleIn(tl, folders, 0.6, Math.min(0.12, 2.5 / folders.length));
     }
 
+    // Optional footnote, small at the bottom of the scene.
+    let footnote = null;
+    if (typeof params.footnote === "string" && params.footnote !== "") {
+      footnote = document.createElement("div");
+      footnote.className = "tw-repos-footnote";
+      footnote.textContent = params.footnote;
+      wrap.append(footnote);
+      presets.fadeIn(tl, footnote, 3.4, 0.6);
+    }
+
     container.append(wrap);
 
     // Fit the folders to the space left under the heading (needs a laid-out page; otherwise the size classes apply).
     if (grid && wrap.clientWidth > 0 && wrap.clientHeight > 0 && grid.style && typeof grid.style.setProperty === "function") {
       const availW = Math.min(wrap.clientWidth, 1120);
-      const availH = wrap.clientHeight - heading.offsetTop - heading.offsetHeight - 24;
+      const availH = wrap.clientHeight - heading.offsetTop - heading.offsetHeight - 24 - (footnote ? footnote.offsetHeight : 0);
       const fit = presets.fitFolderSize(names.length, availW, availH);
       grid.style.setProperty("--tw-folder", fit.size + "px");
       grid.style.setProperty("--tw-folder-font", fit.font + "px");

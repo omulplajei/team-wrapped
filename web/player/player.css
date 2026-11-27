@@ -113,3 +113,4 @@ body:not(.tw-started) #tw-controls { display: none; }
 .tw-odo-strip { display: block; will-change: transform; }
 .tw-odo-digit { display: block; height: 1.1em; line-height: 1.1em; text-align: center; }
 .tw-odo-sep { align-self: flex-end; margin: 0 0.02em 0.12em; font-size: 0.5em; line-height: 1; }
+.tw-repos-footnote { margin: 0 0 0.4rem; padding: 0 1rem; font-size: 0.85rem; text-align: center; opacity: 0.7; }

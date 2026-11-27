@@ -113,3 +113,36 @@ test("the folder size is not set when the container has no measurable dimensions
   assert.strictEqual(grid.style["--tw-folder-font"], undefined);
   assert.strictEqual(grid.className, "tw-folders tw-folders-lg");
 });
+
+test("an optional footnote sits at the bottom of the scene and fades in late", () => {
+  const { tl, container } = render({ ...PARAMS, footnote: "Some repositories are not included" }, dataFor(NAMES));
+  const wrap = container.children[0];
+  const last = wrap.children[wrap.children.length - 1];
+  assert.strictEqual(last.className, "tw-repos-footnote");
+  assert.strictEqual(last.textContent, "Some repositories are not included");
+  const fade = tl.calls.find((c) => c.kind === "from" && c.targets === last);
+  assert.ok(fade);
+  assert.strictEqual(Math.round(fade.at * 100) / 100, 3.4);
+});
+
+test("without a footnote, or with an empty one, there is no footnote element", () => {
+  assert.strictEqual(find(render(PARAMS, dataFor(NAMES)).container, "tw-repos-footnote").length, 0);
+  assert.strictEqual(find(render({ ...PARAMS, footnote: "" }, dataFor(NAMES)).container, "tw-repos-footnote").length, 0);
+});
+
+test("the folder fit leaves room for the footnote", () => {
+  const names = Array.from({ length: 45 }, (_, i) => `repo-${i}`);
+  const sized = (params) => {
+    const tl = fakeTimeline();
+    const container = makeEl("section");
+    loadRenderer("repogrid", { clientWidth: 1500, clientHeight: 622, offsetTop: 24, offsetHeight: 60 })
+      .render({ container, data: dataFor(names), params, partial: [], duration: 8, gsap: { timeline: () => tl }, presets });
+    return find(container, "tw-folders")[0] || container.children[0].children.find((c) => c.className.startsWith("tw-folders"));
+  };
+  const without = sized(PARAMS).style["--tw-folder"];
+  const withNote = sized({ ...PARAMS, footnote: "note" }).style["--tw-folder"];
+  // heading 60 + footnote 60 in the stub: 514 px available without a footnote, 454 with one
+  assert.strictEqual(without, presets.fitFolderSize(45, 1120, 514).size + "px");
+  assert.strictEqual(withNote, presets.fitFolderSize(45, 1120, 454).size + "px");
+  assert.notStrictEqual(without, withNote);
+});
