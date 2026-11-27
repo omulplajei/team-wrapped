@@ -104,7 +104,7 @@
   // An odometer: a row of digit wheels that roll upward as the value counts up.
   function odometer(tl, el, to, at = 0, duration = 1.2, ease = "power1.out", tail = [],
     doc = typeof document !== "undefined" ? document : null) {
-    const total = Math.max(0, Math.round(to));
+    const total = Number.isFinite(to) && to > 0 ? Math.round(to) : 0;
     const count = String(total).length;
     const root = doc.createElement("span");
     root.className = "tw-odo";
@@ -138,15 +138,16 @@
       root.setAttribute("aria-hidden", "true");
     }
     const show = (v) => {
-      const positions = wheelPositions(v, count);
+      const value = Math.min(Math.max(v, 0), total);
+      const positions = wheelPositions(value, count);
       positions.forEach((pos, k) => {
         wheels[k].strip.style.transform = "translateY(" + (-pos * 100 / 11) + "%)";
         // leading zero wheels (not the units wheel) are dimmed, like unused digits on a pump counter
-        wheels[k].wheel.style.opacity = k > 0 && Math.floor(v / Math.pow(10, k)) === 0 ? "0.3" : "1";
+        wheels[k].wheel.style.opacity = k > 0 && Math.floor(value / Math.pow(10, k)) === 0 && pos === 0 ? "0.3" : "1";
       });
     };
     show(0);
-    return scheduleCount(tl, to, at, duration, ease, tail, show, { duration: 0.3, ease: "power2.inOut" });
+    return scheduleCount(tl, total, at, duration, ease, tail, show, { duration: 0.3, ease: "power2.inOut" });
   }
 
   // Largest folder size (px) whose grid of `count` folders fits in width x height.

@@ -245,3 +245,66 @@ test("odometer uses the same count schedule as countUp, with rolling beats", () 
   assert.deepStrictEqual(beats.map((c) => c.vars.duration), [0.25, 0.3, 0.3]);          // min(0.3, pause)
   assert.ok(beats.every((c) => c.vars.ease === "power2.inOut"));
 });
+
+const stripDigit = (s) => Math.round(parseFloat(s.style.transform.match(/translateY\(-?([\d.]+)%/)[1]) * 11 / 100);
+const stripPos = (s) => parseFloat(s.style.transform.match(/translateY\(-?([\d.]+)%/)[1]) * 11 / 100;
+
+test("odometer rounds a non-integer total so the wheels end exactly", () => {
+  const { el, calls, run } = odometerCalls(12.5, []);
+  run();
+  assert.deepStrictEqual(collect(el, "tw-odo-strip").map(stripDigit), [1, 3]);
+  assert.strictEqual(el.attributes["aria-label"], "13");
+  assert.strictEqual(calls[0].vars.v, 13);
+});
+
+test("odometer survives NaN, negative and zero totals with a single wheel at 0", () => {
+  for (const bad of [NaN, -5, 0]) {
+    const { el, run } = odometerCalls(bad, []);
+    run();
+    const wheels = collect(el, "tw-odo-wheel");
+    assert.strictEqual(wheels.length, 1);
+    assert.strictEqual(stripPos(collect(el, "tw-odo-strip")[0]), 0);
+  }
+});
+
+test("odometer clamps overshooting tween values to 0 and the total", () => {
+  const { el, calls } = odometerCalls(1240, []);
+  const strips = collect(el, "tw-odo-strip");
+  calls[0].target.v = -50; calls[0].vars.onUpdate();
+  assert.deepStrictEqual(strips.map(stripPos), [0, 0, 0, 0]);
+  calls[0].target.v = 999999; calls[0].vars.onUpdate();
+  assert.deepStrictEqual(strips.map(stripDigit), [1, 2, 4, 0]);
+});
+
+test("odometer exposes an image role with the formatted label and hides the wheels", () => {
+  const { el } = odometerCalls(1240, []);
+  assert.strictEqual(el.attributes.role, "img");
+  assert.strictEqual(el.attributes["aria-label"], "1,240");
+  assert.strictEqual(el.children[0].attributes["aria-hidden"], "true");
+});
+
+test("odometer lays out seven digits with two separators", () => {
+  const { el } = odometerCalls(1234567, []);
+  assert.strictEqual(collect(el, "tw-odo-wheel").length, 7);
+  assert.strictEqual(collect(el, "tw-odo-sep").length, 2);
+  assert.deepStrictEqual(el.children[0].children.map((c) => c.className),
+    ["tw-odo-wheel", "tw-odo-sep", "tw-odo-wheel", "tw-odo-wheel", "tw-odo-wheel", "tw-odo-sep", "tw-odo-wheel", "tw-odo-wheel", "tw-odo-wheel"]);
+});
+
+test("odometer scrubbing backward returns every wheel to rest and re-dims", () => {
+  const { el, calls, run } = odometerCalls(1240, []);
+  run();
+  calls[0].target.v = 0; calls[0].vars.onUpdate();
+  assert.deepStrictEqual(collect(el, "tw-odo-strip").map(stripPos), [0, 0, 0, 0]);
+  assert.deepStrictEqual(collect(el, "tw-odo-wheel").map((w) => w.style.opacity), ["0.3", "0.3", "0.3", "1"]);
+});
+
+test("odometer lights a wheel as soon as it starts rolling", () => {
+  const { el, calls } = odometerCalls(100, []);
+  const wheels = collect(el, "tw-odo-wheel");
+  calls[0].target.v = 9.5; calls[0].vars.onUpdate();
+  assert.strictEqual(wheels[1].style.opacity, "1");
+  assert.strictEqual(wheels[0].style.opacity, "0.3");
+  calls[0].target.v = 5; calls[0].vars.onUpdate();
+  assert.strictEqual(wheels[1].style.opacity, "0.3");
+});

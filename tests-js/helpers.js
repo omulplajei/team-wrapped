@@ -4,6 +4,9 @@ const path = require("node:path");
 // A minimal DOM: just enough for the renderers, which only build elements.
 function makeEl(tag) {
   const el = { tag, className: "", textContent: "", children: [], style: { setProperty(k, v) { this[k] = v; } } };
+  el.attributes = {};
+  el.setAttribute = (name, value) => { el.attributes[name] = String(value); };
+  el.getAttribute = (name) => (name in el.attributes ? el.attributes[name] : null);
   el.append = (...kids) => { el.children.push(...kids); };
   el.appendChild = (kid) => { el.children.push(kid); return kid; };
   return el;
