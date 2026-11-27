@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 from collections import Counter, defaultdict
 
-from .common import incomplete, is_own_review, pr_authors, whole_number
+from .common import Resolver, incomplete, is_own_review, pr_authors, whole_number
 from .context import Context
 from .delivery_volume import has_line_stats
 from .window import parse_timestamp
@@ -39,10 +39,10 @@ def _comments(ctx, repos):
             if whole_number(c.get("pr_number")) and ctx.window.contains(c.get("created_at"))]
 
 
-def _reviews(ctx, repos, authors):
+def _reviews(ctx, repos, authors, resolver):
     return [r for r in ctx.records("reviews", repos)
             if whole_number(r.get("pr_number")) and ctx.window.contains(r.get("submitted_at"))
-            and not is_own_review(r, authors)]
+            and not is_own_review(r, authors, resolver)]
 
 
 # Each curiosity: fn(ctx, repos, scope_data) -> (entries, enrichment_gap). `entries` feed _rank.
@@ -179,14 +179,15 @@ def build_curiosities(ctx: Context):
     """-> (scopes, partial names). A curiosity whose metrics are not all enabled is omitted, as is an empty one.
     It is partial when an in-scope status of its metrics is not complete, or (enriched ones) when an in-window
     commit or PR in scope lacks the numbers."""
-    authors = pr_authors(ctx) if "reviews" in ctx.metrics else {}
+    resolver = Resolver(ctx.config.aliases)
+    authors = pr_authors(ctx, resolver) if "reviews" in ctx.metrics else {}
     scopes, partial = {}, set()
     for scope, repos in ctx.scopes.items():
         data = {
             "prs": _prs_with_number(ctx, repos) if "pull_requests" in ctx.metrics else [],
             "all_prs": ctx.records("pull_requests", repos),
             "commits": [c for c in ctx.records("commits", repos) if ctx.window.contains(c.get("authored_at"))],
-            "reviews": _reviews(ctx, repos, authors) if "reviews" in ctx.metrics else [],
+            "reviews": _reviews(ctx, repos, authors, resolver) if "reviews" in ctx.metrics else [],
         }
         datasets = {}
         for name, (needs, build) in _CURIOSITIES.items():

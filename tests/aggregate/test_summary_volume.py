@@ -95,3 +95,11 @@ def test_lines_partial_when_commit_status_incomplete(fx):
     fx.status("beta-web", {"commits": "partial"})
     fx.raw("alpha-api", "commits.jsonl", [commit("a", enriched=True, additions=1, deletions=1, files_changed=1)])
     assert build_delivery_volume(fx.context())[1] == ["delivery_volume.lines"]
+
+
+def test_own_reviews_are_excluded_through_aliases(fx):
+    setup(fx, config=CONFIG + "aliases:\n  ada-old: ada-dev\n")
+    fx.raw("alpha-api", "pull_requests.jsonl", [pull_request(1, login="ada-old", merged="2026-04-01T10:00:00Z")])
+    fx.raw("alpha-api", "reviews.jsonl", [review(1, login="Ada-Dev"), review(1, login="grace-codes")])
+    scopes, _ = build_summary(fx.context())
+    assert scopes["all"]["totals"]["reviews"] == 1

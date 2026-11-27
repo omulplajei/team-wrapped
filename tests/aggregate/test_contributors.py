@@ -1,6 +1,6 @@
 import json
 
-from aggregate_helpers import comment, commit, pull_request, review
+from aggregate_helpers import ALL_COMPLETE, comment, commit, pull_request, review
 
 from team_wrapped.aggregate.contributors import avatar_name, bot_matcher, build_contributors
 
@@ -13,6 +13,8 @@ groups:
 
 
 def build(fx):
+    for repo in fx.context().config.repos:
+        fx.status(repo, ALL_COMPLETE)
     scopes, partial = build_contributors(fx.context())
     assert partial == []
     return scopes
@@ -46,14 +48,48 @@ def test_entry_shape_matches_the_sample_and_dates_are_local(fx):
     assert entry["avatar_file"] == "avatars/ada-dev.png"
     assert (entry["first_activity"], entry["last_activity"]) == ("2026-03-01", "2027-01-01")
     assert entry["groups"] == ["alpha"]
-    assert entry["id"].startswith("c") and len(entry["id"]) == 11
+    assert entry["id"] == "c001"
 
 
-def test_id_is_a_hash_of_the_lowercased_login(fx):
-    import hashlib
-    fx.raw("alpha-api", "commits.jsonl", [commit(login="Ada-Dev")])
-    (entry,) = build(fx)["all"]["list"]
-    assert entry["id"] == "c" + hashlib.sha1(b"ada-dev").hexdigest()[:10]
+def test_ids_are_sequential_after_sorting_and_stable_across_scopes(fx):
+    fx.config(CONFIG)
+    fx.raw("alpha-api", "commits.jsonl", [commit("1", login="zed"), commit("2", login="abe"),
+                                          commit("3", login=None, email="guess@example.com", name="G"),
+                                          commit("4", login="x[bot]")])
+    fx.raw("gamma-docs", "commits.jsonl", [commit("5", login="zed")])
+    scopes = build(fx)
+    assert [(c.get("login"), c["id"]) for c in scopes["all"]["list"]] == [
+        ("abe", "c001"), ("zed", "c002"), (None, "c003"), ("x[bot]", "c004")]
+    assert [(c["login"], c["id"]) for c in scopes["group:gamma"]["list"]] == [("zed", "c002")]
+    assert "guess" not in json.dumps(scopes)
+
+
+def test_partial_when_an_in_scope_repo_is_not_complete(fx):
+    fx.config(CONFIG)
+    fx.raw("alpha-api", "commits.jsonl", [commit()])
+    fx.status("alpha-api", {"commits": "partial", "pull_requests": "complete", "reviews": "complete", "comments": "complete"})
+    for repo in ("beta-web", "gamma-docs"):
+        fx.status(repo, ALL_COMPLETE)
+    assert build_contributors(fx.context())[1] == ["contributors"]
+    fx.status("alpha-api", ALL_COMPLETE)
+    assert build_contributors(fx.context())[1] == []
+    fx.status("gamma-docs", {**ALL_COMPLETE, "reviews": "failed"})          # only a group scope sees it, still partial
+    assert build_contributors(fx.context())[1] == ["contributors"]
+
+
+def test_unlinked_author_named_like_a_login_does_not_merge_into_it(fx):
+    fx.raw("alpha-api", "commits.jsonl", [commit("1", login="ada-dev"),
+                                          commit("2", login=None, email=None, name="Ada-Dev"),
+                                          commit("3", login=None, email="ada-dev", name="x")])
+    scope = build(fx)["all"]
+    assert scope["by_kind"] == {"human": 1, "unlinked": 2, "bot": 0}
+
+
+def test_email_alias_does_not_override_an_existing_login(fx):
+    fx.config(CONFIG + "aliases:\n  shared@example.com: ada-dev\n")
+    fx.raw("alpha-api", "commits.jsonl", [commit("1", login="grace-codes", email="shared@example.com"),
+                                          commit("2", login=None, email="shared@example.com", name="S")])
+    assert sorted(by_login(build(fx)["all"])) == ["ada-dev", "grace-codes"]
 
 
 def test_missing_avatar_falls_back_to_the_placeholder_and_bot_names_are_sanitised(fx):

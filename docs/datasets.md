@@ -13,10 +13,13 @@ Metric: any. Not time-bucketed.
 |---|---|
 | `total` | all contributors |
 | `by_kind` | counts of `human`, `bot`, `unlinked` |
+| `list[].id` | sequential id (`c001`, ...) assigned after sorting; not derived from any email or name |
 | `list[].login` | GitHub login; absent for `unlinked` contributors |
 | `list[].avatar_file` | local avatar path (placeholder for unlinked) |
 | `list[].kind` | `human`, `bot` or `unlinked` |
 | `list[].first_activity`, `last_activity` | dates |
+
+Contributors are identified by login (aliases applied), then email, then name; the three kinds never merge by accident, and an email alias applies only to a record without a login. The dataset is partial when any in-scope repository's status for an enabled metric is not complete.
 
 ## repos
 Metric: any. Not time-bucketed. A repository is "touched" when it has at least one commit (author date), pull request (created or merged date), review (submitted date) or comment (created date) inside the window, from any author including bots, among the enabled metrics. `total` equals the length of `list`, which is ordered alphabetically by `name`. The dataset is partial when any in-scope repository's status for an enabled metric is not complete. An empty list counts as missing data for scenes that require `list.name`, so scripts mark such scenes `on_missing_data: skip`.
