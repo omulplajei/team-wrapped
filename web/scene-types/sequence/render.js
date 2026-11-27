@@ -48,7 +48,9 @@ export default {
       } else {
         // The number swells and settles; its label fades in beside it a moment later.
         presets.swellIn(tl, el.children[0], at);
-        presets.fadeIn(tl, el.children[1], at + 0.15, 0.4);
+        // The badge (partial data only) rides with the label; the delay keeps the label clear of the swollen number.
+        const [, label, badge] = el.children;
+        presets.fadeIn(tl, badge ? [label, badge] : label, at + 0.45, 0.4);
       }
     });
 

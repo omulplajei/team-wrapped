@@ -59,7 +59,21 @@ test("each label fades in beside its number, a little after the number starts", 
   const { tl } = render(PARAMS, DATA);
   const fades = tl.calls.filter((c) => c.kind === "from" && !Array.isArray(c.targets));
   // the heading at 0, then the two labels
-  assert.deepStrictEqual(fades.map((c) => round2(c.at)), [0, 0.95, 2.95]);
+  assert.deepStrictEqual(fades.map((c) => round2(c.at)), [0, 1.25, 3.25]);
+  assert.deepStrictEqual(fades.map((c) => c.targets.className), ["tw-seq-heading", "tw-seq-label", "tw-seq-label"]);
+  const swells = tl.calls.filter((c) => c.kind === "fromTo");
+  assert.deepStrictEqual(swells.map((c) => c.targets.className), ["tw-seq-value", "tw-seq-value"]);
+});
+
+test("the partial badge fades in with its label and is never shown un-animated", () => {
+  const { tl, container } = render(PARAMS, DATA, ["summary.totals"]);
+  const badges = find(container, "tw-seq-partial");
+  assert.strictEqual(badges.length, 2);
+  const has = (c, b) => (Array.isArray(c.targets) ? c.targets : [c.targets]).includes(b);
+  const froms = tl.calls.filter((c) => c.kind === "from");
+  badges.forEach((b) => assert.ok(froms.some((c) => has(c, b))));
+  const times = froms.filter((c) => badges.some((b) => has(c, b))).map((c) => round2(c.at));
+  assert.deepStrictEqual(times, [1.25, 3.25]);
 });
 
 test("the text step pops in on its own between the two numbers", () => {
