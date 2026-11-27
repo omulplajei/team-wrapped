@@ -6,8 +6,11 @@ import sys
 from pathlib import Path
 
 from .aggregate import aggregate
+from .collect import collect, describe, make_plan
+from .collect.report import run_summary, status_report
 from .config import load_config
 from .derive import write_repos
+from .github import GitHub
 from .scenes.build import BuildError, build
 from .scenes.loader import LoadError
 from .scenes.validate import format_report, resolve_and_validate
@@ -54,6 +57,36 @@ def _cmd_aggregate(args) -> int:
     return 0
 
 
+def _cmd_collect(args) -> int:
+    data_root = Path(args.root) / args.data
+    config = load_config(data_root / "config.yml")
+    plan = make_plan(config, args.repo, args.metric, args.since, args.until)
+    if args.dry_run:
+        for line in describe(plan):
+            print(line)
+        print(f"dry run: {len(plan.repos)} repositories x {len(plan.metrics)} metrics, no API calls made")
+        return 0
+    result = collect(data_root, config, GitHub(max_requests=args.max_requests), plan, avatars=not args.no_avatars)
+    print()
+    for line in run_summary(result, plan.metrics):
+        print(line)
+    return 1 if result.failed else 0
+
+
+def _cmd_status(args) -> int:
+    data_root = Path(args.root) / args.data
+    for line in status_report(data_root, load_config(data_root / "config.yml")):
+        print(line)
+    return 0
+
+
+def _positive(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return value
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="team-wrapped")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -74,8 +107,25 @@ def main(argv: list[str] | None = None) -> int:
     agg = sub.add_parser("aggregate", help="write derived/*.json from data/raw")
     agg.add_argument("--root", default=".", help="repository root (default: current directory)")
     agg.add_argument("--data", default="data", help="data folder under the root (default: data)")
+    col = sub.add_parser("collect", help="fetch GitHub activity into data/raw with gh (GraphQL)")
+    col.add_argument("--root", default=".", help="repository root (default: current directory)")
+    col.add_argument("--data", default="data", help="data folder under the root (default: data)")
+    col.add_argument("--repo", action="append", help="only this repository (repeatable)")
+    col.add_argument("--metric", action="append", help="only this metric (repeatable)")
+    col.add_argument("--since", help="window start YYYY-MM-DD for this run (default: config since)")
+    col.add_argument("--until", help="window end YYYY-MM-DD for this run (default: config until)")
+    col.add_argument("--max-requests", type=_positive, help="stop cleanly after N gh calls")
+    col.add_argument("--no-avatars", action="store_true", help="do not download avatars")
+    col.add_argument("--dry-run", action="store_true", help="print the plan and make no API calls")
+    stat = sub.add_parser("status", help="show per repo and metric collection status (no network)")
+    stat.add_argument("--root", default=".", help="repository root (default: current directory)")
+    stat.add_argument("--data", default="data", help="data folder under the root (default: data)")
     args = parser.parse_args(argv)
     try:
+        if args.command == "collect":
+            return _cmd_collect(args)
+        if args.command == "status":
+            return _cmd_status(args)
         if args.command == "aggregate":
             return _cmd_aggregate(args)
         if args.command == "derive-repos":
