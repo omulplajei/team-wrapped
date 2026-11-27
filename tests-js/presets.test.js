@@ -308,3 +308,24 @@ test("odometer lights a wheel as soon as it starts rolling", () => {
   calls[0].target.v = 5; calls[0].vars.onUpdate();
   assert.strictEqual(wheels[1].style.opacity, "0.3");
 });
+
+test("formatDate and formatMonth read ISO values in UTC, in English", () => {
+  assert.strictEqual(presets.formatDate("2026-03-14"), "Saturday 14 March");
+  assert.strictEqual(presets.formatDate("2026-03-14", false), "14 March");
+  assert.strictEqual(presets.formatDate("2026-12-31", false), "31 December");
+  assert.strictEqual(presets.formatMonth("2026-03"), "March");
+  assert.strictEqual(presets.formatMonth("2026-12"), "December");
+  assert.strictEqual(presets.formatDate("tomorrow"), "tomorrow");        // not an ISO date: unchanged
+  assert.strictEqual(presets.formatMonth("2026-13"), "2026-13");          // impossible month: unchanged
+});
+
+test("fillTemplate fills record fields with the right formats", () => {
+  const record = { value: 1234, repo: "sample-api", pr_number: 4821, date: "2026-03-14", from: "2026-03-02", to: "2026-03-20", month: "2026-03", merged_prs: 1500 };
+  assert.strictEqual(presets.fillTemplate("in {repo}, pull request #{pr_number}", record), "in sample-api, pull request #4821");
+  assert.strictEqual(presets.fillTemplate("on {date}", record), "on Saturday 14 March");
+  assert.strictEqual(presets.fillTemplate("from {from} to {to}", record), "from 2 March to 20 March");
+  assert.strictEqual(presets.fillTemplate("in {month}, {merged_prs} merged", record), "in March, 1,500 merged");
+  assert.strictEqual(presets.fillTemplate("{value} things", record), "1,234 things");
+  assert.strictEqual(presets.fillTemplate("{missing}|{repo}", record), "|sample-api");   // unknown fields become empty
+  assert.strictEqual(presets.fillTemplate("no placeholders", record), "no placeholders");
+});

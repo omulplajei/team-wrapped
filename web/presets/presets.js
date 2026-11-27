@@ -163,7 +163,44 @@
     return { size: 36, font: 5 };
   }
 
-  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, countUp, wheelPositions, odometer, fitFolderSize };
+  const DAY = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const DAY_SHORT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+  const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
+
+  // "2026-03-14" -> "Saturday 14 March" (or "14 March" without the weekday); other values are returned unchanged.
+  function formatDate(iso, withWeekday = true) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    if (!m) return iso;
+    const date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (date.getUTCMonth() !== +m[2] - 1 || date.getUTCDate() !== +m[3]) return iso;     // impossible date
+    return (withWeekday ? DAY : DAY_SHORT).format(date);
+  }
+
+  // "2026-03" -> "March"; other values are returned unchanged.
+  function formatMonth(iso) {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(iso));
+    if (!m || +m[2] < 1 || +m[2] > 12) return iso;
+    return MONTH.format(new Date(Date.UTC(+m[1], +m[2] - 1, 1)));
+  }
+
+  // Replaces {key} in a template with the record's value, formatted by key.
+  const FIELD_FORMATS = {
+    date: (v) => formatDate(v, true),
+    from: (v) => formatDate(v, false),
+    to: (v) => formatDate(v, false),
+    month: (v) => formatMonth(v),
+  };
+  function fillTemplate(template, record) {
+    return String(template).replace(/\{(\w+)\}/g, (_, key) => {
+      const value = record[key];
+      if (value === undefined || value === null) return "";
+      if (FIELD_FORMATS[key]) return FIELD_FORMATS[key](String(value));
+      if (/_number$/.test(key)) return String(value);                    // ids are never given thousands separators
+      return typeof value === "number" ? format(value) : String(value);
+    });
+  }
+
+  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, countUp, wheelPositions, odometer, fitFolderSize, formatDate, formatMonth, fillTemplate };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {
