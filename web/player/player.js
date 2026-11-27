@@ -18,7 +18,7 @@
     stage: $("tw-stage"), start: $("tw-start"), end: $("tw-end"),
     playBtn: $("tw-play-btn"), replayBtn: $("tw-replay-btn"),
     toggle: $("tw-toggle"), progress: $("tw-progress"),
-    mute: $("tw-mute"), sceneTitle: $("tw-scene-title"),
+    mute: $("tw-mute"),
   };
 
   const state = { started: false, playing: false, index: 0, tl: null, el: null, scrubbing: false, scrubResume: false };
@@ -71,17 +71,27 @@
     seg.style.flex = String(scene.duration);
     seg.title = scene.title;
     seg.setAttribute("aria-label", scene.title);
+    const track = document.createElement("div");
+    track.className = "tw-seg-track";
     const fill = document.createElement("div");
     fill.className = "tw-seg-fill";
-    seg.append(fill);
+    track.append(fill);
+    seg.append(track);
     els.progress.append(seg);
     return { seg, fill };
   });
 
+  // Icon buttons: the state attribute picks the icon (see player.css), the label is for screen readers and tooltips.
+  function setButton(button, stateName, label) {
+    button.dataset.state = stateName;
+    button.setAttribute("aria-label", label);
+    button.title = label;
+  }
+
   function refresh() {
-    els.toggle.textContent = state.playing ? "Pause" : "Play";
-    if (audio) els.mute.textContent = audio.muted ? "Unmute" : "Mute";
-    els.sceneTitle.textContent = scenes[state.index] ? scenes[state.index].title : "";
+    // The toggle shows what clicking it will do.
+    setButton(els.toggle, state.playing ? "playing" : "paused", state.playing ? "Pause" : "Play");
+    if (audio) setButton(els.mute, audio.muted ? "muted" : "on", audio.muted ? "Unmute" : "Mute");
     segs.forEach((s, i) => s.seg.classList.toggle("tw-current", i === state.index));
   }
 

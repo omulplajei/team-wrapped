@@ -32,21 +32,30 @@ button { font-family: inherit; }
 .tw-overlay { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 2rem; background: var(--tw-bg); }
 #tw-start-title { font-size: clamp(2rem, 6vw, 4rem); margin: 0; }
-.tw-overlay button { font-size: 1.5rem; padding: 0.8rem 2.5rem; border-radius: 999px;
-  border: 0; cursor: pointer; background: var(--tw-button-bg); color: var(--tw-button-text); }
+.tw-overlay button { display: inline-flex; align-items: center; justify-content: center; padding: 0.9rem 2.6rem;
+  border-radius: 999px; border: 0; cursor: pointer; background: var(--tw-button-bg); color: var(--tw-button-text); }
+.tw-overlay .tw-icon { width: 2rem; height: 2rem; }
 
 #tw-controls { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: flex;
   align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; background: var(--tw-controls-bg); }
 body:not(.tw-started) #tw-controls { display: none; }
-#tw-controls button { background: transparent; color: inherit; border: 1px solid rgba(128, 128, 128, 0.6);
-  border-radius: 6px; padding: 0.3rem 0.8rem; cursor: pointer; min-width: 4.5rem; }
-#tw-scene-title { font-size: 0.85rem; opacity: 0.7; min-width: 9rem; }
+#tw-toggle, #tw-mute { flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 2.4rem; height: 2.4rem; padding: 0; background: transparent; color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.6); border-radius: 999px; cursor: pointer; }
+.tw-icon { width: 1.2rem; height: 1.2rem; fill: currentColor; }
+/* The state attribute set by player.js picks which icon shows. */
+#tw-toggle[data-state="playing"] .tw-icon-play, #tw-toggle[data-state="paused"] .tw-icon-pause,
+#tw-mute[data-state="on"] .tw-icon-muted, #tw-mute[data-state="muted"] .tw-icon-sound { display: none; }
 
+/* The progress line: the buttons keep a tall click area, the visible pill is slim. */
 #tw-progress { flex: 1; display: flex; gap: 4px; height: 22px; cursor: pointer; touch-action: none; }
-.tw-seg { position: relative; padding: 0; border: 0; background: var(--tw-surface); border-radius: 3px;
-  overflow: hidden; cursor: pointer; }
+.tw-seg { position: relative; display: flex; align-items: center; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.tw-seg-track { position: relative; width: 100%; height: 8px; border: 1px solid rgba(128, 128, 128, 0.6);
+  border-radius: 999px; overflow: hidden; }
 .tw-seg-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--tw-text); }
-.tw-seg.tw-current { outline: 2px solid var(--tw-focus); }
+.tw-seg.tw-current .tw-seg-track { box-shadow: 0 0 0 2px var(--tw-focus); }
+.tw-seg:focus-visible { outline: none; }
+.tw-seg:focus-visible .tw-seg-track { outline: 2px solid var(--tw-focus); outline-offset: 2px; }
 
 .tw-message { font-size: clamp(2rem, 7vw, 5rem); margin: 0; }
 
