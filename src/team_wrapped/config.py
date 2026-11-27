@@ -13,8 +13,9 @@ from .scenes.loader import LoadError
 
 _KNOWN_KEYS = {
     "org", "repos", "groups", "since", "until", "metrics", "commit_branches", "bot_patterns",
-    "aliases", "timezone", "curiosities", "avatars", "reviewer_pairs",
+    "aliases", "timezone", "curiosities", "avatars", "reviewer_pairs", "group_info",
 }
+CATEGORIES = ("core", "extension", "support")
 METRICS = ("commits", "pull_requests", "reviews", "comments")
 DEFAULT_BOT_PATTERNS = ("*[bot]",)
 _ORG = re.compile(r"[A-Za-z0-9-]+")
@@ -27,6 +28,7 @@ class Config:
     org: str
     repos: list
     groups: dict = field(default_factory=dict)
+    group_info: dict = field(default_factory=dict)   # group -> {"label": str, "category": str | None}, every group
     since: str | None = None
     until: str | None = None
     metrics: list = field(default_factory=lambda: list(METRICS))
@@ -135,6 +137,35 @@ def _commit_branches(path, value) -> str:
     return value
 
 
+def _group_info(path, value, groups) -> dict:
+    """One entry per configured group: `label` (default the group name) and `category` (default None)."""
+    if value is None:
+        value = {}
+    if not isinstance(value, dict):
+        raise LoadError(f"{path}: group_info must be a mapping of group name to label and category")
+    unknown_groups = [g for g in value if g not in groups]
+    if unknown_groups:
+        raise LoadError(f"{path}: group_info names groups that are not in groups: {sorted(map(str, unknown_groups))}")
+    info = {}
+    for name in groups:
+        entry = value.get(name)
+        if entry is None:
+            entry = {}
+        if not isinstance(entry, dict):
+            raise LoadError(f"{path}: group_info.{name} must be a mapping (label, category)")
+        unknown = set(entry) - {"label", "category"}
+        if unknown:
+            raise LoadError(f"{path}: unknown group_info.{name} field(s) {sorted(map(str, unknown))}")
+        label = entry.get("label", name)
+        if not isinstance(label, str) or not label.strip():
+            raise LoadError(f"{path}: group_info.{name}.label must be non-empty text")
+        category = entry.get("category")
+        if category is not None and (not isinstance(category, str) or category not in CATEGORIES):
+            raise LoadError(f"{path}: group_info.{name}.category must be one of {', '.join(CATEGORIES)}")
+        info[name] = {"label": label.strip(), "category": category}
+    return info
+
+
 def load_config(path) -> Config:
     path = Path(path)
     if not path.is_file():
@@ -195,6 +226,7 @@ def load_config(path) -> Config:
     if since and until and since > until:
         raise LoadError(f"{path}: since must not be after until")
     return Config(org=org, repos=list(repos), groups=groups,
+                  group_info=_group_info(path, data.get("group_info"), groups),
                   since=since.isoformat() if since else None,
                   until=until.isoformat() if until else None,
                   metrics=_metrics(path, data.get("metrics")),

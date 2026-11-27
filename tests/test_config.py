@@ -189,3 +189,27 @@ def test_commit_branches_defaults_to_default_and_reads_all(tmp_path):
 def test_bad_commit_branches_are_rejected(tmp_path, value):
     with pytest.raises(LoadError, match="commit_branches"):
         load_config(write(tmp_path, MIN + f"commit_branches: {value}\n"))
+
+
+GROUPED = MIN + "groups: {alpha: [a], beta: [a]}\n"
+
+
+def test_group_info_defaults_and_values(tmp_path):
+    config = load_config(write(tmp_path, GROUPED + "group_info:\n  alpha: {label: Core Alpha, category: core}\n"))
+    assert config.group_info == {"alpha": {"label": "Core Alpha", "category": "core"},
+                                 "beta": {"label": "beta", "category": None}}
+    assert load_config(write(tmp_path, MIN)).group_info == {}
+
+
+@pytest.mark.parametrize("extra, message", [
+    ("group_info: [alpha]", "group_info"),
+    ("group_info: {nope: {label: X}}", "not in groups"),
+    ("group_info: {alpha: {colour: red}}", "unknown group_info.alpha field"),
+    ("group_info: {alpha: {label: ''}}", "label"),
+    ("group_info: {alpha: {label: 3}}", "label"),
+    ("group_info: {alpha: {category: big}}", "category"),
+    ("group_info: {alpha: 5}", "group_info.alpha"),
+])
+def test_bad_group_info_is_rejected(tmp_path, extra, message):
+    with pytest.raises(LoadError, match=message):
+        load_config(write(tmp_path, GROUPED + extra + "\n"))
