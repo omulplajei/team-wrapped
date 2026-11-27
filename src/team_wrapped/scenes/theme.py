@@ -25,10 +25,12 @@ DEFAULT_COLORS = {
     "folder-text": "#2a1f05",
 }
 
-_VARIABLES = {key: "--tw-" + {"background": "bg", "controls-bg": "controls-bg"}.get(key, key) for key in DEFAULT_COLORS}
+_VARIABLES = {key: "--tw-" + {"background": "bg"}.get(key, key) for key in DEFAULT_COLORS}
 
-_COLOR = re.compile(r"^(#[0-9a-fA-F]{3,8}|rgba?\(\s*[0-9.]+%?\s*(,\s*[0-9.]+%?\s*){2,3}\))$")
-_FONT = re.compile(r"^[A-Za-z0-9 ,'\"._-]{1,200}$")
+_COLOR = re.compile(r"#[0-9a-fA-F]{3,8}|rgba?\(\s*[0-9.]+%?\s*(,\s*[0-9.]+%?\s*){2,3}\)")
+_FAMILY = r"\"[A-Za-z0-9 ._-]+\"|'[A-Za-z0-9 ._-]+'|[A-Za-z0-9_-][A-Za-z0-9 _-]*"
+_FONT = re.compile(rf"(?:{_FAMILY})(?:\s*,\s*(?:{_FAMILY})){{0,9}}")
+_THEME_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 _KEYS = {"name", "colors", "font", "logo", "backdrop"}
 _BACKDROP_KEYS = {"images", "opacity"}
 
@@ -50,15 +52,23 @@ DEFAULT_THEME = Theme(name="default", colors=dict(DEFAULT_COLORS))
 def _asset(folder: Path, value, what: str) -> Path:
     if not isinstance(value, str) or not value:
         raise LoadError(f"{folder}: {what} must be a file path")
-    path = (folder / value).resolve()
-    if Path(value).is_absolute() or not path.is_relative_to(folder.resolve()):
-        raise LoadError(f"{folder}: {what} '{value}' must stay inside the theme folder")
+    inside = f"{folder}: {what} '{value}' must stay inside the theme folder"
+    if Path(value).is_absolute():
+        raise LoadError(inside)
+    try:
+        path = (folder / value).resolve()
+        if not path.is_relative_to(folder.resolve()):
+            raise LoadError(inside)
+    except (ValueError, OSError):
+        raise LoadError(inside) from None
     if not path.is_file():
         raise LoadError(f"{folder}: {what} '{value}' not found")
     return path
 
 
 def load_theme(name: str, roots) -> Theme:
+    if not _THEME_NAME.fullmatch(name):
+        raise LoadError(f"invalid theme name '{name}'")
     found = None
     for root in roots:
         candidate = Path(root) / "themes" / name
@@ -70,7 +80,10 @@ def load_theme(name: str, roots) -> Theme:
         searched = ", ".join(str(r) for r in roots)
         raise LoadError(f"theme '{name}' not found in: {searched}")
 
-    data = yaml.safe_load((found / "theme.yml").read_text()) or {}
+    try:
+        data = yaml.safe_load((found / "theme.yml").read_text()) or {}
+    except yaml.YAMLError as error:
+        raise LoadError(f"{found / 'theme.yml'}: invalid YAML: {error}") from None
     if not isinstance(data, dict):
         raise LoadError(f"{found / 'theme.yml'}: must be a mapping")
     unknown = set(data) - _KEYS
@@ -80,23 +93,27 @@ def load_theme(name: str, roots) -> Theme:
         raise LoadError(f"{found / 'theme.yml'}: name '{data.get('name')}' does not match folder '{name}'")
 
     colors = dict(DEFAULT_COLORS)
-    given = data.get("colors") or {}
+    given = data.get("colors")
+    if given is None:
+        given = {}
     if not isinstance(given, dict):
         raise LoadError(f"{found / 'theme.yml'}: colors must be a mapping")
     for key, value in given.items():
         if key not in DEFAULT_COLORS:
             raise LoadError(f"{found / 'theme.yml'}: unknown colour '{key}'")
-        if not isinstance(value, str) or not _COLOR.match(value):
+        if not isinstance(value, str) or not _COLOR.fullmatch(value):
             raise LoadError(f"{found / 'theme.yml'}: colour '{key}' has an invalid value")
         colors[key] = value
 
     font = data.get("font")
-    if font is not None and (not isinstance(font, str) or not _FONT.match(font)):
+    if font is not None and (not isinstance(font, str) or len(font) > 200 or not _FONT.fullmatch(font)):
         raise LoadError(f"{found / 'theme.yml'}: font has an invalid value")
 
     logo = _asset(found, data["logo"], "logo") if "logo" in data else None
 
-    backdrop = data.get("backdrop") or {}
+    backdrop = data.get("backdrop")
+    if backdrop is None:
+        backdrop = {}
     if not isinstance(backdrop, dict) or set(backdrop) - _BACKDROP_KEYS:
         raise LoadError(f"{found / 'theme.yml'}: backdrop has unknown keys or is not a mapping")
     images = backdrop.get("images") or []

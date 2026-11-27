@@ -87,3 +87,92 @@ def test_invalid_themes_are_rejected(tmp_path, yml, message):
 def test_unknown_theme_is_an_error(tmp_path):
     with pytest.raises(LoadError, match="theme 'nope' not found"):
         load_theme("nope", [tmp_path])
+
+
+@pytest.mark.parametrize("name", ["../x", "/abs", "a/b", "", ".hidden"])
+def test_invalid_theme_names_are_rejected(tmp_path, name):
+    with pytest.raises(LoadError, match="invalid theme name"):
+        load_theme(name, [tmp_path])
+
+
+def _font_theme(tmp_path, font):
+    import yaml
+    make_theme(tmp_path, yml=yaml.safe_dump({"font": font}))
+    return load_theme("brand", [tmp_path])
+
+
+@pytest.mark.parametrize("font", [
+    '"x', "'x", '"a" "b"', " ", "Arial\n", 'a; } b {',
+    ", ".join(f"f{i}" for i in range(11)), "a" * 201,
+])
+def test_bad_fonts_are_rejected(tmp_path, font):
+    with pytest.raises(LoadError, match="font"):
+        _font_theme(tmp_path, font)
+
+
+@pytest.mark.parametrize("font", ['"Effra", system-ui, sans-serif', "Arial", "'Segoe UI', Roboto"])
+def test_good_fonts_are_accepted(tmp_path, font):
+    assert _font_theme(tmp_path, font).font == font
+
+
+@pytest.mark.parametrize("value", ["#fff\n", "rgb(1,2,3)\n"])
+def test_colour_with_trailing_newline_is_rejected(tmp_path, value):
+    import yaml
+    make_theme(tmp_path, yml=yaml.safe_dump({"colors": {"accent": value}}))
+    with pytest.raises(LoadError, match="invalid value"):
+        load_theme("brand", [tmp_path])
+
+
+@pytest.mark.parametrize("value", ["#fff", "rgba(1, 2, 3, 0.5)"])
+def test_good_colours_are_accepted(tmp_path, value):
+    import yaml
+    make_theme(tmp_path, yml=yaml.safe_dump({"colors": {"accent": value}}))
+    assert load_theme("brand", [tmp_path]).colors["accent"] == value
+
+
+def test_nul_in_asset_path_is_a_load_error(tmp_path):
+    make_theme(tmp_path, yml='logo: "a\\0b.png"\n')
+    with pytest.raises(LoadError):
+        load_theme("brand", [tmp_path])
+
+
+def test_empty_logo_is_a_load_error(tmp_path):
+    make_theme(tmp_path, yml='logo: ""\n')
+    with pytest.raises(LoadError):
+        load_theme("brand", [tmp_path])
+
+
+@pytest.mark.parametrize("yml", ["colors: []\n", 'colors: ""\n'])
+def test_colors_must_be_a_mapping(tmp_path, yml):
+    make_theme(tmp_path, yml=yml)
+    with pytest.raises(LoadError, match="colors must be a mapping"):
+        load_theme("brand", [tmp_path])
+
+
+def test_null_colors_and_backdrop_mean_defaults(tmp_path):
+    make_theme(tmp_path, yml="colors:\nbackdrop:\n")
+    assert load_theme("brand", [tmp_path]).colors == DEFAULT_COLORS
+
+
+def test_backdrop_must_be_a_mapping(tmp_path):
+    make_theme(tmp_path, yml="backdrop: []\n")
+    with pytest.raises(LoadError, match="backdrop"):
+        load_theme("brand", [tmp_path])
+
+
+def test_malformed_yaml_names_the_file(tmp_path):
+    make_theme(tmp_path, yml="colors: [unclosed\n")
+    with pytest.raises(LoadError, match="theme.yml"):
+        load_theme("brand", [tmp_path])
+
+
+def test_symlink_escaping_the_theme_folder_is_rejected(tmp_path):
+    folder = make_theme(tmp_path, yml="logo: assets/link.png\n")
+    outside = tmp_path / "secret.png"
+    outside.write_bytes(b"png")
+    try:
+        (folder / "assets" / "link.png").symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not supported")
+    with pytest.raises(LoadError, match="inside the theme folder"):
+        load_theme("brand", [tmp_path])
