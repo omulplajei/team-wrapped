@@ -87,3 +87,14 @@ def test_scene_requires_a_type(tmp_path):
     write(shared / "scenes/m.yml", "id: m\n")
     with pytest.raises(LoadError, match="needs a 'type'"):
         load_scene("m", [shared])
+
+
+def test_script_theme_key(tmp_path):
+    shared = make_root(tmp_path, "shared")
+    write(shared / "scripts/t.yml", "id: t\ntheme: brand\nscenes:\n  - scene: a\n")
+    write(shared / "scripts/n.yml", "id: n\nscenes:\n  - scene: a\n")
+    write(shared / "scripts/bad.yml", "id: bad\ntheme: [x]\nscenes:\n  - scene: a\n")
+    assert load_script("t", [shared]).theme == "brand"
+    assert load_script("n", [shared]).theme is None
+    with pytest.raises(LoadError, match="theme"):
+        load_script("bad", [shared])

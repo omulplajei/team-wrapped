@@ -33,6 +33,7 @@ class Script:
     scenes: list
     music: dict | None = None
     transition: str = "fade"
+    theme: str | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,9 @@ def load_script(script_id: str, roots) -> Script:
             scope=item.get("scope"),
             transition=item.get("transition"),
         ))
+    theme = data.get("theme")
+    if theme is not None and not isinstance(theme, str):
+        raise LoadError(f"{path}: 'theme' must be a theme name")
     return Script(
         id=script_id,
         title=data.get("title", script_id),
@@ -90,6 +94,7 @@ def load_script(script_id: str, roots) -> Script:
         scenes=entries,
         music=data.get("music"),
         transition=data.get("transition", "fade"),
+        theme=theme,
     )
 
 
