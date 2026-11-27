@@ -145,3 +145,34 @@ body:not(.tw-started) #tw-controls { display: none; }
 .tw-cast-heading-late { position: absolute; left: 0; right: 0; height: 48px; margin: 0; line-height: 48px;
   font-size: clamp(1.2rem, 3.5vw, 2rem); }
 .tw-cast-face { position: absolute; border-radius: 50%; object-fit: cover; background: var(--tw-surface); }
+
+/* capability-flow: hexagons drawn on a canvas, text in the DOM over it */
+.tw-cap { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
+.tw-cap-heading { margin-top: 1.5rem; font-size: clamp(1.4rem, 4.5vw, 2.8rem); font-weight: 700; text-align: center; }
+.tw-cap-partial { margin-top: 0.3rem; font-size: 0.75rem; color: var(--tw-warning); }
+.tw-cap-legend { position: absolute; top: 0; left: 0; display: flex; flex-direction: column; gap: 0.35rem;
+  font-size: 0.85rem; text-align: left; opacity: 0.9; }
+.tw-cap-key { display: flex; align-items: center; gap: 0.45rem; }
+.tw-cap-swatch { width: 1rem; height: 0.87rem; background: currentColor;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.tw-cap-swatch-core { color: var(--tw-cat-core); }
+.tw-cap-swatch-extension { color: var(--tw-cat-extension); }
+.tw-cap-swatch-support { color: var(--tw-cat-support); }
+.tw-cap-stage { position: relative; flex: 1; min-height: 0; width: 100%; margin: 0.8rem 0 0.6rem; }
+.tw-cap-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.tw-cap-label { position: absolute; transform: translateX(-50%); width: max-content; padding: 0.15em 0.4em; border-radius: 0.5em;
+  text-align: center; line-height: 1.15; pointer-events: none; background: color-mix(in srgb, var(--tw-bg) 55%, transparent);
+  text-shadow: 0 1px 3px var(--tw-bg); }
+.tw-cap-name { font-weight: 600; overflow-wrap: anywhere; }
+.tw-cap-count { margin-top: 0.1em; font-weight: 800; color: var(--tw-accent); font-variant-numeric: tabular-nums; }
+.tw-cap-months { width: min(70rem, 100%); }
+.tw-cap-month-row { display: flex; gap: 2px; }
+.tw-cap-month { min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; padding-bottom: 0.25rem;
+  font-size: clamp(0.6rem, 1.7vw, 0.85rem); opacity: 0.45; }
+.tw-cap-month.tw-cap-month-on { opacity: 1; font-weight: 700; color: var(--tw-accent); }
+.tw-cap-month-track { position: relative; height: 3px; border-radius: 999px; overflow: hidden; background: var(--tw-surface); }
+.tw-cap-month-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--tw-accent); }
+@media (max-width: 640px) {
+  .tw-cap-legend { position: static; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 0.3rem 0.9rem;
+    margin-top: 0.5rem; font-size: 0.75rem; }
+}
