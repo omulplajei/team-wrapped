@@ -2,7 +2,7 @@
 
 Collect GitHub activity for a set of repositories and play it back as a "wrapped" page: scenes linked by a script, with animation and background music.
 
-Status: the scene, validation and player layers work on the sample data. The aggregator builds the derived data from raw records; the collector that writes those records is not built yet; see `docs/superpowers/`.
+Status: the scene, validation and player layers work on the sample data. `collect` fetches GitHub activity into raw records and `aggregate` builds the derived data from them; see `docs/superpowers/`.
 
 ## Try it on the sample data
 
@@ -66,6 +66,33 @@ PYTHONPATH=src python3 -m team_wrapped derive-repos --data data
 
 For now every configured repository counts as "touched"; the file is marked `"basis": "configuration"` until activity is collected from GitHub.
 
+## Collecting from GitHub
+
+`collect` reads `data/config.yml` and writes the raw records `aggregate` needs. It talks to GitHub only through the [`gh` CLI](https://cli.github.com/) and only through the GraphQL API (`gh api graphql`), so log in once and the tool never handles a token:
+
+```bash
+gh auth login
+PYTHONPATH=src python3 -m team_wrapped collect --data data --dry-run      # the plan: repos, metrics, window; no API calls
+PYTHONPATH=src python3 -m team_wrapped collect --data data
+PYTHONPATH=src python3 -m team_wrapped status --data data                # what is complete, partial, failed or never run
+PYTHONPATH=src python3 -m team_wrapped aggregate --data data
+```
+
+| Option | Meaning |
+|---|---|
+| `--repo NAME` | only this repository (repeatable; must be in the config) |
+| `--metric NAME` | only this metric (repeatable; must be enabled in the config). `pull_requests`, `reviews` and `comments` come from one search |
+| `--since YYYY-MM-DD`, `--until YYYY-MM-DD` | the window for this run only (default: the config's). Dates are inclusive and read in the config `timezone` |
+| `--max-requests N` | stop cleanly after N `gh` calls |
+| `--no-avatars` | skip avatar downloads (or set `avatars: {download: false}`) |
+| `--dry-run` | print the plan and make no API calls |
+
+What it writes, per repository: `data/raw/<repo>/commits.jsonl`, `pull_requests.jsonl`, `reviews.jsonl`, `comments.jsonl` (section 5.1 of the spec), `status.json` (`complete`, `partial` or `failed` per metric) and `status-detail.json` (reason, collection time, record count). Commits come from the default branch; commit and PR sizes come with the same queries, so there is no separate enrichment pass. Avatars go to `data/avatars/` (from `https://github.com/<login>.png`); logins whose download failed use the placeholder and are listed in `data/raw/avatars-failed.json`. Raw commit records keep author names and emails: they stay in the git-ignored `data/` and never reach `derived/`.
+
+Each repository and metric is written as soon as it finishes. A missing or inaccessible repository is marked `failed` and the run continues; the exit code is 1 when anything failed. Transient errors (5xx, network, secondary rate limits) are retried with backoff. When the hourly rate limit or `--max-requests` is reached, the run stops cleanly: the unit in progress is `partial` with what was fetched, later units are left as they were, and the message says when to resume ("resume after HH:MM").
+
+Re-running is safe: records are merged by key, so nothing is duplicated and records fetched earlier are kept. A run always fetches the whole window again (incremental fetching is not built yet), and a `partial` unit is fetched again in full.
+
 ## Aggregating raw data
 
 `aggregate` reads `data/config.yml` and the raw JSON-lines files in `data/raw/<repo>/` (`commits.jsonl`, `pull_requests.jsonl`, `reviews.jsonl`, `comments.jsonl`, `status.json`; the exact fields are in section 5.1 of the spec) and writes `data/derived/`: `summary`, `delivery_volume`, `curiosities`, `contributors`, `repos` and `meta.json`, for the scopes `all` and `group:<name>`. It never writes to `raw/`, and running it twice gives the same files (apart from `generated_at`).
@@ -74,7 +101,7 @@ For now every configured repository counts as "touched"; the file is marked `"ba
 PYTHONPATH=src python3 -m team_wrapped aggregate --data data
 ```
 
-Datasets computed from incomplete data (a repository that is not `complete`, or commits and PRs not yet enriched) are listed in `meta.json` under `partial_datasets`. The collector (`collect`, not built yet) will write the raw files, so for now you provide them yourself; `data-sample/` has derived files only and no raw records yet.
+Datasets computed from incomplete data (a repository that is not `complete`, or commits and PRs not yet enriched) are listed in `meta.json` under `partial_datasets`. `collect` writes the raw files (see above); `data-sample/` has derived files only and no raw records yet.
 
 ## Themes
 

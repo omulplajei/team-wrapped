@@ -14,14 +14,14 @@ The emphasis is on **what the repos delivered**, not on individuals. Everyone's 
 
 | Topic | Decision |
 |---|---|
-| Source | GitHub API through the `gh` CLI (`gh api`), no token handling in our code |
+| Source | GitHub GraphQL API through the `gh` CLI (`gh api graphql`), no token handling in our code |
 | Language | Python 3.11+; dependencies: PyYAML, pytest |
 | Architecture | Two-stage file pipeline: `collect` writes raw JSONL, `aggregate` writes derived JSON |
 | Metrics collected now | commits, pull requests, reviews, comments. Pluggable so more can be added later |
 | People | Everyone, including bots (flagged, not dropped) and one-off contributors |
 | Time range | Configurable `since`/`until`; default is full history |
 | Grouping | Generic named groups of repos in private config. Capability statistics are per-group aggregates and only exist if groups are configured |
-| Collection | Multi-pass: resumable, incremental, idempotent, request-budgeted |
+| Collection | Multi-pass: resumable per repo and metric, idempotent, request-budgeted (incremental fetching deferred) |
 
 Typical use: a team lists the repos it owns and defines one group per area of ownership. That mapping lives only in the private `data/config.yml`, and nothing project-specific is committed.
 
@@ -30,17 +30,17 @@ Typical use: a team lists the repos it owns and defines one group per area of ow
 ```
 team-wrapped/
   src/team_wrapped/
-    cli.py                # collect, aggregate, status
+    cli.py                # collect, status, aggregate, derive-repos, validate-script, build
     config.py             # load and validate data/config.yml
-    github.py             # gh api wrapper: pagination, retry, rate limits
-    checkpoint.py         # per repo + metric sync state
-    contributors.py       # contributor registry and avatar download
-    metrics/              # one plugin per metric
-      base.py             # Metric interface
-      commits.py  pull_requests.py  reviews.py  comments.py
-    aggregate/            # one module per statistic family
-      delivery_volume.py  review_collab.py  summary.py  curiosities.py
-    metadata.py           # builds data/derived/meta.json
+    github.py             # gh api graphql wrapper: error classification, retry, rate limits, request budget
+    collect/              # the collect stage
+      __init__.py         # plan (filters, window), units per repo + metric, statuses
+      queries.py          # every GraphQL document
+      commits.py          # default-branch history, stats included
+      pull_requests.py    # PR search with reviews, comments and review threads
+      avatars.py          # avatar download (file names shared with aggregate/contributors.py)
+      store.py  report.py # raw writes (merge by key, atomic), status tables
+    aggregate/            # one module per statistic family, plus raw.py (loader), contributors.py, meta.py
     scenes/               # script loading, validate-script, build
   web/                    # front-end (public)
     player/               # page template, playback controller, controls, styles
@@ -84,7 +84,7 @@ The loader (`config.py`) validates `org`, `repos`, `groups`, `since`, `until`, `
 
 ## 5. Raw records
 
-Stored as JSON-lines at `data/raw/<repo>/<metric>.jsonl`. Records are keyed by `(repo, metric, id)`; re-fetching overwrites and never duplicates. Records for cheap-pass and enrichment-pass data carry an `enriched` flag.
+Stored as JSON-lines at `data/raw/<repo>/<metric>.jsonl`. Records are keyed by `(repo, metric, id)`; re-fetching overwrites and never duplicates. Records carry an `enriched` flag; the GraphQL collector writes commits and pull requests already enriched (section 8).
 
 | Metric | Fields |
 |---|---|
@@ -134,7 +134,7 @@ The purpose is to show **how many contributors there are**, not to profile indiv
 
 **Counts in the output.** Total contributors, with the breakdown human, bot and unlinked, overall, per group and per repo. Consumers that want a "humans only" total can exclude bots.
 
-**Avatars.** On by default (`avatars.download`). Each linked contributor's avatar (`https://github.com/<login>.png`) is downloaded once into `data/avatars/<login>.png` and reused on later passes. Deleted accounts (`ghost`) get the default avatar. A failed download falls back to the placeholder and is recorded in `meta.json`. Only public profile data is stored.
+**Avatars.** On by default (`avatars.download`). Each linked contributor's avatar (`https://github.com/<login>.png`) is downloaded once by `collect` into `data/avatars/<name>.png` (`name` is the lower-cased login with characters other than letters, digits, `.`, `_` and `-` replaced, so `dependabot[bot]` is `dependabot_bot`) and reused on later passes. Deleted accounts (`ghost`) get the default avatar. A failed download falls back to the placeholder and is recorded in `data/raw/avatars-failed.json` (section 8). Only public profile data is stored.
 
 ## 7. Derived statistics
 
@@ -215,19 +215,24 @@ Not a separate family. Where `groups` is configured, every statistic above is al
 
 ## 8. Collection and multi-pass behaviour
 
-Collection is expected to take several passes because of API rate limits.
+Collection may take several passes because of API rate limits.
 
-- **Two tiers per metric.** The cheap pass uses list endpoints only. The enrichment pass makes per-PR and per-commit detail calls (one call each) for commit count, changed files, additions, deletions and commit stats. A run does the cheap pass for all repos before any enrichment, so usable data exists early. `--enrich-only` and `--no-enrich` select the tier.
-- **Resumable.** Checkpoints are written after each page or batch, so a killed run loses at most one batch. The checkpoint swap is atomic.
-- **Idempotent.** Records are keyed so re-fetching never duplicates.
-- **Incremental.** Later runs fetch only data newer than the checkpoint. Open PRs are re-fetched each run because their state changes.
-- **Budgeted.** `collect --max-requests N` stops cleanly at the budget. `gh api rate_limit` is checked up front. When the limit is hit the run sleeps or exits with a "resume after HH:MM" message.
-- **Filters.** `collect [--repo X] [--metric Y]`.
+- **One transport.** Every call is `gh api graphql` (`github.py`); the documents are in `collect/queries.py`. `gh` holds the credentials (`gh auth login`); our code never sees a token.
+- **No separate enrichment pass (v1).** GraphQL returns commit stats (`additions`, `deletions`, `changedFilesIfAvailable`) with the history page and pull request sizes (`commits.totalCount`, `changedFiles`, `additions`, `deletions`) with the search page, so records are written with `enriched: true`. A commit whose `changedFilesIfAvailable` is null is written with `enriched: false` and no stats.
+- **Commits.** The default branch history (`commit_branches: default`; `all` is rejected until supported), filtered with `since`/`until` on the commit date. `is_merge` is more than one parent; `pr_number` is the first associated pull request. A commit author without a linked user is unlinked (`author_login` null, name and email kept in raw), unless the email is a GitHub noreply address, whose login is used (this links bot commits such as `…+dependabot[bot]@users.noreply.github.com`).
+- **Pull requests, reviews, comments.** One search per repository: `repo:<org>/<repo> is:pr sort:created-asc created:<=<end> updated:>=<start>`. Search returns at most 1000 results per query, so a larger result splits the `updated` range in halves recursively; a range under a minute that still exceeds 1000 is kept at 1000 and marked partial. Reviews, conversation comments and review threads (with their comments) are inlined in the search page, and longer connections are completed with `node(id:)` follow-ups. `comment_count` is conversation comments plus review comments. Dismissed and pending reviews are skipped. A review comment's `thread_root_id` is the first comment of its thread and `in_reply_to_id` its `replyTo`. GraphQL returns a bot's login without `[bot]`; the collector appends it so `bot_patterns` match. A deleted account has a null login.
+- **Window.** `since`/`until` (or `collect --since/--until` for one run) are local dates in `timezone`, sent as the UTC instants of local midnight starting `since` and the last second of `until`. The aggregator applies the exact window again.
+- **Units and checkpoints.** A unit is one repository and metric (pull requests, reviews and comments share one search). When a unit ends its records are merged into the jsonl by key (atomic temporary file and rename) and `status.json` is updated: `complete`, `partial` (rate limit, budget, retries exhausted, capped search) or `failed` (missing or forbidden repository, rejected query; nothing written). Reasons, the collection time, record count and window go to `status-detail.json`, which the aggregator ignores; `status.json` keeps the plain strings of section 5.1. There are no page-level checkpoints in v1: a stopped unit keeps the records fetched so far and is fetched again in full next time.
+- **Idempotent.** Records are merged by key, so re-fetching never duplicates; stored records that are not fetched again are kept.
+- **Incremental: deferred.** Every run fetches the whole window again.
+- **Budgeted.** `collect --max-requests N` stops cleanly at N `gh` calls. Every query asks for `rateLimit { remaining resetAt }`; at the primary limit the run stops with "resume after HH:MM". Secondary limits and transient errors (5xx, network) retry with backoff, then the unit is `partial`. Units not reached are left untouched.
+- **Filters.** `collect [--repo X] [--metric Y] [--since D] [--until D] [--dry-run] [--no-avatars]`.
+- **Avatars.** After the units, each distinct linked login (aliases applied; bots by their app name) is fetched once from `https://github.com/<login>.png` (redirects only to the GitHub avatar CDN; image content type and under 1 MB required) into `data/avatars/` with the aggregator's file names. Failures keep the placeholder and are listed in `data/raw/avatars-failed.json`.
 
 ### CLI
-- `collect`: fetch raw data, contributor registry and avatars
-- `aggregate`: build `data/derived/`
-- `status`: per repo and metric, shows complete, partial, never-run or failed, with last sync and coverage dates
+- `collect`: fetch raw data and avatars (exit 1 when a unit failed)
+- `aggregate`: build `data/derived/` (including the contributor registry)
+- `status`: per repo and metric, shows complete, partial, never-run or failed with record counts, the last collection time and failure reasons; no network
 - `derive-repos`: write `data/derived/repos.json` from `data/config.yml` (interim, see section 7.6)
 
 ## 9. Metadata (`data/derived/meta.json`)
@@ -239,7 +244,7 @@ Read by a front-end to show freshness and gaps.
 - Status per repo and metric: complete, partial, never-run, failed, with reason and error count
 - Enrichment coverage (enriched records over total)
 - Skipped statistics (disabled metric) and partial statistics (incomplete enrichment)
-- Skipped corrupt JSONL lines, failed avatar downloads
+- Skipped corrupt JSONL lines, failed avatar downloads (for now listed in `data/raw/avatars-failed.json`, not yet in `meta.json`)
 - Config window and the generation time
 
 ## 10. Error handling

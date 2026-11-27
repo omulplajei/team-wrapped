@@ -1,5 +1,5 @@
 # Sample collection config: the same layout as your private data/config.yml.
-# `aggregate` turns the raw records collected under data/raw (written by `collect`, not built yet) into data/derived;
+# `collect` fetches GitHub activity into data/raw (with `gh`), and `aggregate` turns it into data/derived;
 # the sample has no raw records, so `derive-repos` writes data/derived/repos.json from this file instead.
 org: sample-org
 since: 2026-01-01
@@ -36,3 +36,11 @@ groups:
     - sample-design-system
     - sample-infra
     - sample-sdk
+# Optional keys (defaults shown):
+# metrics: [commits, pull_requests, reviews, comments]
+# commit_branches: default        # `collect` supports the default branch only; `all` is rejected for now
+# timezone: UTC                   # also how `since`/`until` are read when collecting
+# bot_patterns: ["*[bot]"]
+# aliases: {old-login: new-login}
+# curiosities: {top_n: 5}
+# avatars: {download: true}
