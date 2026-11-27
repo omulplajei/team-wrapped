@@ -22,7 +22,7 @@ Runner = Callable[[list], tuple]        # args -> (returncode, stdout, stderr)
 
 _TOKEN = re.compile(r"\b(gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)|((?:token|bearer)\s+)\S+", re.IGNORECASE)
 _TRANSIENT = re.compile(r"HTTP 5\d\d|\b50[234]\b|timed? ?out|timeout|connection (reset|refused)|EOF|"
-                        r"temporarily unavailable|could not connect|network is unreachable|no such host",
+                        r"temporarily unavailable|could not connect|could not resolve host|network is unreachable|no such host",
                         re.IGNORECASE)
 
 

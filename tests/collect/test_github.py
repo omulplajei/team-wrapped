@@ -56,9 +56,10 @@ def test_builds_gh_arguments_without_a_shell():
     ((1, "", "gh: Must have admin rights (HTTP 403)"), Forbidden),
     ((1, "", "gh: Bad credentials (HTTP 401)"), Forbidden),
     (graphql_error("SOMETHING", "Field 'x' doesn't exist"), GhError),
+    ((1, "", "error connecting to api.github.com: could not resolve host"), Transient),
 ])
 def test_classifies_errors(response, error):
-    gh, _, _ = client(response)
+    gh, _, _ = client(*[response] * 4)
     with pytest.raises(error):
         gh.graphql("q")
 
