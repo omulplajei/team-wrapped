@@ -10,6 +10,7 @@ params:
   heading: "This year, we worked hard"
   value: summary.totals.commits
   label: "Commits"
+  counter: "odometer"
   # Race up fast, then land the last five increments one at a time, each after a longer pause.
   count_ease: "expo.out"
   count_duration: 3.0

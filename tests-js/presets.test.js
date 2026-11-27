@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const presets = require("../web/presets/presets.js");
+const { makeEl } = require("./helpers.js");
 
 test("format uses thousands separators", () => {
   assert.strictEqual(presets.format(1240), "1,240");
@@ -186,4 +187,61 @@ test("a beat is never longer than the pause before it, so beats cannot overlap",
   beats.forEach((c, i) => {
     if (i > 0) assert.ok(c.at >= beats[i - 1].at + beats[i - 1].vars.duration - 1e-9);
   });
+});
+
+test("wheelPositions: the units wheel turns continuously, others turn only as a carry", () => {
+  assert.deepStrictEqual(presets.wheelPositions(0, 4), [0, 0, 0, 0]);
+  assert.deepStrictEqual(presets.wheelPositions(1239.5, 4), [9.5, 3.5, 2, 1]);
+  assert.deepStrictEqual(presets.wheelPositions(1240, 4), [0, 4, 2, 1]);
+  assert.deepStrictEqual(presets.wheelPositions(1990, 4), [0, 9, 9, 1]);
+  assert.deepStrictEqual(presets.wheelPositions(1999.5, 4), [9.5, 9.5, 9.5, 1.5]);   // the carry cascades up
+  assert.deepStrictEqual(presets.wheelPositions(2000, 4), [0, 0, 0, 2]);
+});
+
+function odometerCalls(to, tail) {
+  const calls = [];
+  const tl = { to: (target, vars, when) => { calls.push({ target, vars, at: when }); return tl; } };
+  const el = makeEl("div");
+  presets.odometer(tl, el, to, 1, 3, "expo.out", tail, { createElement: makeEl });
+  const run = (upTo = calls.length) => calls.slice(0, upTo).forEach((c) => { c.target.v = c.vars.v; c.vars.onUpdate(); });
+  return { el, calls, run };
+}
+const collect = (el, className, found = []) => {
+  if (el.className === className) found.push(el);
+  (el.children || []).forEach((kid) => collect(kid, className, found));
+  return found;
+};
+
+test("odometer builds one wheel per digit with a separator between thousands and hundreds", () => {
+  const { el } = odometerCalls(1240, []);
+  assert.strictEqual(el.children.length, 1);
+  assert.strictEqual(el.children[0].className, "tw-odo");
+  assert.strictEqual(collect(el, "tw-odo-wheel").length, 4);
+  const seps = collect(el, "tw-odo-sep");
+  assert.deepStrictEqual(seps.map((s) => s.textContent), [","]);
+  const cells = collect(collect(el, "tw-odo-strip")[0], "tw-odo-digit").map((c) => c.textContent);
+  assert.deepStrictEqual(cells, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]);
+  // order: thousands wheel, separator, then hundreds, tens, units
+  assert.deepStrictEqual(el.children[0].children.map((c) => c.className),
+    ["tw-odo-wheel", "tw-odo-sep", "tw-odo-wheel", "tw-odo-wheel", "tw-odo-wheel"]);
+});
+
+test("the wheels end on the exact total and leading zero wheels start dimmed", () => {
+  const { el, run } = odometerCalls(1240, []);
+  const strips = collect(el, "tw-odo-strip");            // most significant first: 1, 2, 4, 0
+  const wheels = collect(el, "tw-odo-wheel");
+  assert.deepStrictEqual(wheels.map((w) => w.style.opacity), ["0.3", "0.3", "0.3", "1"]);   // at 0 only the units wheel is lit
+  run();
+  assert.deepStrictEqual(strips.map((s) => Math.round(parseFloat(s.style.transform.match(/translateY\(-?([\d.]+)%/)[1]) * 11 / 100)), [1, 2, 4, 0]);
+  assert.deepStrictEqual(wheels.map((w) => w.style.opacity), ["1", "1", "1", "1"]);
+});
+
+test("odometer uses the same count schedule as countUp, with rolling beats", () => {
+  const { calls } = odometerCalls(1240, [0.25, 0.35, 0.5]);
+  assert.deepStrictEqual(calls.map((c) => c.vars.v), [1237, 1238, 1239, 1240]);
+  assert.strictEqual(calls[0].vars.ease, "expo.out");
+  const beats = calls.slice(1);
+  assert.deepStrictEqual(beats.map((c) => r2(c.at)), [4.25, 4.6, 5.1]);
+  assert.deepStrictEqual(beats.map((c) => c.vars.duration), [0.25, 0.3, 0.3]);          // min(0.3, pause)
+  assert.ok(beats.every((c) => c.vars.ease === "power2.inOut"));
 });

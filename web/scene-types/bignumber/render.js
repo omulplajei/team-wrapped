@@ -27,7 +27,11 @@ export default {
     const countTail = Array.isArray(params.count_tail) ? params.count_tail : [];
     const hero = presets.lookup(data, params.value);
     if (typeof hero === "number") {
-      presets.countUp(tl, value, hero, 0.3 + delay, countDuration, countEase, countTail);
+      if (params.counter === "odometer") {
+        presets.odometer(tl, value, hero, 0.3 + delay, countDuration, countEase, countTail, document);
+      } else {
+        presets.countUp(tl, value, hero, 0.3 + delay, countDuration, countEase, countTail);
+      }
     } else {
       value.textContent = "–";
     }

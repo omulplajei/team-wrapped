@@ -61,22 +61,92 @@
     }, at);
   }
 
-  function countUp(tl, el, to, at = 0, duration = 1.2, ease = "power1.out", tail = []) {
+  // Schedules the main count and the tail beats on `tl`, calling show(v) whenever the value changes.
+  // `beat` is {duration, ease} for the single-increment tail beats.
+  function scheduleCount(tl, to, at, duration, ease, tail, show, beat) {
     const state = { v: 0 };
-    el.textContent = format(0);
-    const show = () => { el.textContent = format(Math.round(state.v)); };
+    const update = () => show(state.v);
     // Tail beats: the last few increments land one at a time, each after its own pause.
     const pauses = (Array.isArray(tail) ? tail : [])
       .filter((p) => typeof p === "number" && Number.isFinite(p) && p > 0)
       .slice(0, Math.max(0, Math.round(to)));
     const main = to - pauses.length;
-    tl.to(state, { v: main, duration, ease, onUpdate: show }, at);
+    tl.to(state, { v: main, duration, ease, onUpdate: update }, at);
     let when = at + duration;
     pauses.forEach((pause, i) => {
       when += pause;
-      tl.to(state, { v: main + i + 1, duration: Math.min(0.05, pause), ease: "none", onUpdate: show }, when);
+      tl.to(state, { v: main + i + 1, duration: Math.min(beat.duration, pause), ease: beat.ease, onUpdate: update }, when);
     });
     return tl;
+  }
+
+  function countUp(tl, el, to, at = 0, duration = 1.2, ease = "power1.out", tail = []) {
+    el.textContent = format(0);
+    return scheduleCount(tl, to, at, duration, ease, tail,
+      (v) => { el.textContent = format(Math.round(v)); }, { duration: 0.05, ease: "none" });
+  }
+
+  // Where each wheel of a mechanical counter sits for the value v, in digits (0 to 10; index 0 = units).
+  // The units wheel turns continuously; every other wheel only turns while the wheel below it passes 9 to 0.
+  function wheelPositions(v, wheels) {
+    const out = [];
+    for (let k = 0; k < wheels; k++) {
+      if (k === 0) {
+        out.push(((v % 10) + 10) % 10);
+      } else {
+        const base = Math.floor(v / Math.pow(10, k)) % 10;
+        out.push(base + Math.max(0, out[k - 1] - 9));
+      }
+    }
+    return out;
+  }
+
+  // An odometer: a row of digit wheels that roll upward as the value counts up.
+  function odometer(tl, el, to, at = 0, duration = 1.2, ease = "power1.out", tail = [],
+    doc = typeof document !== "undefined" ? document : null) {
+    const total = Math.max(0, Math.round(to));
+    const count = String(total).length;
+    const root = doc.createElement("span");
+    root.className = "tw-odo";
+    const wheels = [];                                   // index = wheel number, 0 = units
+    for (let k = count - 1; k >= 0; k--) {
+      const wheel = doc.createElement("span");
+      wheel.className = "tw-odo-wheel";
+      const strip = doc.createElement("span");
+      strip.className = "tw-odo-strip";
+      for (let d = 0; d <= 10; d++) {                    // 0 to 9, then 0 again so 9 can roll into 0
+        const cell = doc.createElement("span");
+        cell.className = "tw-odo-digit";
+        cell.textContent = String(d % 10);
+        strip.append(cell);
+      }
+      wheel.append(strip);
+      root.append(wheel);
+      wheels[k] = { wheel, strip };
+      if (k > 0 && k % 3 === 0) {
+        const sep = doc.createElement("span");
+        sep.className = "tw-odo-sep";
+        sep.textContent = ",";
+        root.append(sep);
+      }
+    }
+    el.textContent = "";
+    el.append(root);
+    if (typeof el.setAttribute === "function") {
+      el.setAttribute("role", "img");
+      el.setAttribute("aria-label", format(total));
+      root.setAttribute("aria-hidden", "true");
+    }
+    const show = (v) => {
+      const positions = wheelPositions(v, count);
+      positions.forEach((pos, k) => {
+        wheels[k].strip.style.transform = "translateY(" + (-pos * 100 / 11) + "%)";
+        // leading zero wheels (not the units wheel) are dimmed, like unused digits on a pump counter
+        wheels[k].wheel.style.opacity = k > 0 && Math.floor(v / Math.pow(10, k)) === 0 ? "0.3" : "1";
+      });
+    };
+    show(0);
+    return scheduleCount(tl, to, at, duration, ease, tail, show, { duration: 0.3, ease: "power2.inOut" });
   }
 
   // Largest folder size (px) whose grid of `count` folders fits in width x height.
@@ -92,7 +162,7 @@
     return { size: 36, font: 5 };
   }
 
-  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, countUp, fitFolderSize };
+  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, countUp, wheelPositions, odometer, fitFolderSize };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

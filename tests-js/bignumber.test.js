@@ -144,3 +144,20 @@ test("supporting figures never get tail beats", () => {
   assert.strictEqual(sub.length, 1);
   assert.strictEqual(sub[0].vars.v, 310);
 });
+
+test("counter: odometer draws wheels instead of text and ends on the total", () => {
+  const { tl, container } = render({ ...PARAMS, counter: "odometer" }, DATA);
+  assert.strictEqual(find(container, "tw-odo-wheel").length, 4);                         // 1,240 has four digits
+  finishCountUps(tl);
+  const strips = find(container, "tw-odo-strip");
+  assert.deepStrictEqual(
+    strips.map((s) => Math.round(parseFloat(s.style.transform.match(/translateY\(-?([\d.]+)%/)[1]) * 11 / 100)),
+    [1, 2, 4, 0]);
+});
+
+test("by default the hero stays a plain text count", () => {
+  const { container } = render(PARAMS, DATA);
+  assert.strictEqual(find(container, "tw-odo-wheel").length, 0);
+  assert.strictEqual(find(container, "tw-hero-value")[0].textContent, "0");
+  assert.strictEqual(find(render({ ...PARAMS, counter: "nonsense" }, DATA).container, "tw-odo-wheel").length, 0);
+});
