@@ -95,6 +95,24 @@ Stored as JSON-lines at `data/raw/<repo>/<metric>.jsonl`. Records are keyed by `
 
 Bot tagging (`is_bot`) is applied by the aggregate step from `bot_patterns`, so changing the patterns never needs re-collection.
 
+### 5.1 Raw file format (the contract between `collect` and `aggregate`)
+
+One JSON object per line. Timestamps are ISO 8601 UTC strings (`2026-03-14T09:30:00Z`). Field names are exactly:
+
+| File | Fields (`?` = absent until enriched) |
+|---|---|
+| `commits.jsonl` | `repo`, `sha`, `author_login` (null when unlinked), `author_name`, `author_email`, `authored_at`, `committed_at`, `is_merge`, `pr_number` (null if unknown), `enriched` (bool), `additions?`, `deletions?`, `files_changed?` |
+| `pull_requests.jsonl` | `repo`, `number`, `author_login`, `created_at`, `merged_at` (null), `closed_at` (null), `state` (`open`, `closed`, `merged`), `base_branch`, `labels`, `draft`, `comment_count`, `review_count`, `enriched` (bool), `commit_count?`, `changed_files?`, `additions?`, `deletions?` |
+| `reviews.jsonl` | `repo`, `pr_number`, `reviewer_login`, `state` (`approved`, `changes_requested`, `commented`), `submitted_at` |
+| `comments.jsonl` | `repo`, `pr_number`, `author_login`, `kind` (`review` for code comments, `conversation`), `created_at`, `comment_id`, `in_reply_to_id` (null), `thread_root_id` (null for conversation comments) |
+| `status.json` (one per repo) | `{"<metric>": "complete" | "partial" | "never-run" | "failed"}`. A missing file means every metric is `never-run`; a metric missing from an existing file whose jsonl exists counts as `complete` |
+
+Layout: `data/raw/<repo>/<file>`. The aggregator never writes to `raw/`.
+
+### 5.2 Aggregator v1 scope
+
+`aggregate` produces what the shipped scenes read: `summary.totals`, `delivery_volume.lines`, the curiosity datasets listed in `docs/datasets.md`, `contributors`, `repos.touched`, and `meta.json`. Scopes are `all` and `group:<name>`; `repo:<name>` scopes, time buckets and `review_collab` are deferred until a scene needs them. All statistics respect the configured window (`since`/`until`, inclusive, evaluated in the configured `timezone`) and `metrics`.
+
 ### Metric plugin interface
 
 A plugin declares its `name`, a `fetch(repo, since, checkpoint)` generator that yields raw records, a record schema, and a `checkpoint_key`. The registry discovers plugins in `metrics/`, and config enables them. Adding a metric means adding one file and one config entry.
