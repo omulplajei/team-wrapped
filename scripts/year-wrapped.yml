@@ -3,13 +3,13 @@ title: 2026 Year Wrapped
 period: 2026
 scope: all            # all, or a group name
 scenes:
-  - scene: we-shipped
-  - scene: we-looked-after-each-other
-  - scene: repos-touched
-    on_missing_data: skip   # an empty repo list counts as missing data, so a quiet scope skips the scene
-  - scene: we-changed-the-code
+  - scene: we-shipped                  # 1. effort
+  - scene: we-looked-after-each-other  # 2. the work
+  - scene: year-in-numbers             # 3. the numbers (recap grid)
     on_missing_data: skip   # needs enriched line data; the rest still plays without it
-  - scene: year-in-numbers  # the recap grid of all numbers
-    on_missing_data: skip   # also needs enriched line data; the rest still plays without it
-  # more scenes can be added between the recap and the headcount
-  - scene: how-many-of-us
+  # 4. curiosities will go here
+  - scene: repos-touched               # 5. extent: the repositories...
+    on_missing_data: skip   # an empty repo list counts as missing data, so a quiet scope skips the scene
+  - scene: we-changed-the-code         # ...and the lines of change
+    on_missing_data: skip   # needs enriched line data; the rest still plays without it
+  - scene: how-many-of-us              # 6. people: the finale

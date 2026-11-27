@@ -58,3 +58,25 @@ test("partial datasets are labelled on the hero and on supporting figures", () =
   const none = render(PARAMS, DATA, []);
   assert.strictEqual(find(none.container, "tw-hero-partial").length, 0);
 });
+
+test("an optional heading sits above the number", () => {
+  const { container } = render({ ...PARAMS, heading: "This year, we worked hard" }, DATA);
+  const wrap = container.children[0];
+  assert.strictEqual(wrap.className, "tw-hero");
+  assert.deepStrictEqual(wrap.children.slice(0, 3).map((c) => c.className),
+    ["tw-hero-heading", "tw-hero-value", "tw-hero-label"]);
+  assert.strictEqual(wrap.children[0].textContent, "This year, we worked hard");
+});
+
+test("without a heading there is no heading element", () => {
+  const { container } = render(PARAMS, DATA);
+  assert.strictEqual(find(container, "tw-hero-heading").length, 0);
+});
+
+test("a heading delays the count-ups so it can be read first", () => {
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const counts = (params) => render(params, DATA).tl.calls
+    .filter((c) => c.kind === "to" && "v" in c.vars).map((c) => round2(c.at));
+  assert.deepStrictEqual(counts(PARAMS), [0.3, 2.8]);                                   // unchanged without a heading
+  assert.deepStrictEqual(counts({ ...PARAMS, heading: "H" }), [1.0, 3.5]);             // everything 0.7 s later
+});

@@ -34,10 +34,10 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     payload = read_payload(result.index)
     scenes = {s["id"]: s for s in payload["scenes"]}
     assert [s["id"] for s in payload["scenes"]] == [
-        "we-shipped", "we-looked-after-each-other", "repos-touched",
-        "we-changed-the-code", "year-in-numbers", "how-many-of-us",
+        "we-shipped", "we-looked-after-each-other", "year-in-numbers",
+        "repos-touched", "we-changed-the-code", "how-many-of-us",
     ]
-    assert [s["duration"] for s in payload["scenes"]] == [6.0, 6.0, 8.0, 6.0, 8.0, 10.0]
+    assert [s["duration"] for s in payload["scenes"]] == [6.0, 6.0, 8.0, 8.0, 6.0, 10.0]
     assert scenes["we-shipped"]["partial"] == []
     assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
@@ -61,7 +61,7 @@ def test_build_skips_both_line_data_scenes_when_lines_are_missing(repo_root, sam
     data = sample_copy(sample_root, tmp_path)
     (data / "derived" / "delivery_volume.json").unlink()
     result = build("year-wrapped", repo_root, data, tmp_path / "dist")
-    assert result.skipped == ["we-changed-the-code", "year-in-numbers"]
+    assert result.skipped == ["year-in-numbers", "we-changed-the-code"]
     assert [s["id"] for s in read_payload(result.index)["scenes"]] == [
         "we-shipped", "we-looked-after-each-other", "repos-touched", "how-many-of-us"]
 

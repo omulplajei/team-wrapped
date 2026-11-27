@@ -1,10 +1,11 @@
 id: we-shipped
-title: We shipped
+title: We worked hard
 type: bignumber
 requires:
   - dataset: summary.totals
     fields: [commits]
     allow_partial: false
 params:
+  heading: "This year, we worked hard"
   value: summary.totals.commits
   label: "Commits"

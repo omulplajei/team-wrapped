@@ -102,3 +102,4 @@ body:not(.tw-started) #tw-controls { display: none; }
   background-repeat: no-repeat; pointer-events: none; }
 
 .tw-logo { display: block; width: min(18rem, 60vw); height: auto; }
+.tw-hero-heading { margin-bottom: 1.4rem; font-size: clamp(1.6rem, 5vw, 3rem); font-weight: 700; text-align: center; }
