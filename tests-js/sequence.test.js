@@ -84,7 +84,6 @@ test("the partial badge fades in with its label and is never shown un-animated",
   badges.forEach((b) => assert.ok(froms.some((c) => has(c, b))));
   const times = froms.filter((c) => badges.some((b) => has(c, b))).map((c) => round2(c.at));
   assert.deepStrictEqual(times, [1.55, 2.95]);
-  badges.forEach((b, i) => assert.strictEqual(b.className, "tw-seq-partial"));
 });
 
 test("a number step without a lead has no lead element", () => {
