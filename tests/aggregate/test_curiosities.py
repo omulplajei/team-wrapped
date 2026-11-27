@@ -174,3 +174,50 @@ def test_status_makes_curiosities_partial(fx):
     fx.raw("alpha-api", "comments.jsonl", [comment(1)])
     _, partial = run(fx)
     assert partial == ["curiosities.longest_comment_chain", "curiosities.most_commented_pr"]
+
+
+def test_biggest_commit_ignores_merge_commits_and_they_do_not_make_it_partial(fx):
+    setup(fx)
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("a", enriched=True, additions=10, deletions=5, files_changed=2),
+        commit("m", is_merge=True, enriched=True, additions=900, deletions=0, files_changed=40),
+        commit("m2", is_merge=True)])
+    data, partial = run(fx)
+    assert data["biggest_commit"] == [{"value": 15, "repo": "alpha-api", "sha": "a", "files": 2}]
+    assert "curiosities.biggest_commit" not in partial
+
+
+def test_biggest_commit_ties_compare_instants_not_strings(fx):
+    setup(fx)
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("late", at="2026-03-14T09:30:00Z", enriched=True, additions=5, deletions=0, files_changed=1),
+        commit("early", at="2026-03-14T10:00:00+02:00", enriched=True, additions=5, deletions=0, files_changed=1)])
+    data, _ = run(fx)
+    assert [r["sha"] for r in data["biggest_commit"]] == ["early", "late"]       # 08:00Z before 09:30Z
+
+
+def test_non_boolean_enriched_is_not_enriched(fx):
+    setup(fx)
+    fx.raw("alpha-api", "pull_requests.jsonl", [{**pr(1, commit_count=9), "enriched": "yes"}, pr(2, commit_count=4)])
+    fx.raw("alpha-api", "commits.jsonl", [commit("a", enriched="true", additions=1, deletions=1, files_changed=1)])
+    data, partial = run(fx)
+    assert data["most_commits_pr"] == [{"value": 4, "repo": "alpha-api", "pr_number": 2}]
+    assert "biggest_commit" not in data
+    assert {"curiosities.most_commits_pr", "curiosities.biggest_commit"} <= set(partial)
+
+
+def test_cheap_then_enriched_pr_uses_the_enriched_version(fx):
+    setup(fx)
+    fx.raw("alpha-api", "pull_requests.jsonl", [pull_request(1, merged="2026-05-02T10:00:00Z"),
+                                                pr(1, commit_count=6)])
+    data, partial = run(fx)
+    assert data["most_commits_pr"] == [{"value": 6, "repo": "alpha-api", "pr_number": 1}]
+    assert "curiosities.most_commits_pr" not in partial
+
+
+def test_own_reviews_are_excluded_through_aliases(fx):
+    setup(fx, config=CONFIG + "aliases:\n  ada-old: ada-dev\n")
+    fx.raw("alpha-api", "pull_requests.jsonl", [pull_request(1, login="ada-old")])
+    fx.raw("alpha-api", "reviews.jsonl", [review(1, login="Ada-Dev"), review(1, login="grace-codes")])
+    data, _ = run(fx)
+    assert data["most_reviewed_pr"] == [{"value": 1, "repo": "alpha-api", "pr_number": 1}]

@@ -141,3 +141,13 @@ def test_failed_write_keeps_the_old_file_and_leaves_no_temp(tmp_path):
         agg_io.write_json(path, {"bad": object()})
     assert json.loads(path.read_text()) == {"ok": 1}
     assert [p.name for p in tmp_path.iterdir()] == ["x.json"]
+
+
+def test_coverage_rounds_down_and_requires_boolean_true(fx):
+    fx.config(CONFIG)
+    records = [commit(str(i), enriched=True) for i in range(299)] + [commit("last")]
+    fx.raw("zeta", "commits.jsonl", records)
+    fx.raw("zeta", "pull_requests.jsonl", [pull_request(1, enriched="yes"), pull_request(2, enriched=True),
+                                           pull_request(3, enriched=True)])
+    coverage = build_meta(fx.context(), [], NOW)["enrichment_coverage"]
+    assert coverage == {"commits": 0.99, "pull_requests": 0.66}

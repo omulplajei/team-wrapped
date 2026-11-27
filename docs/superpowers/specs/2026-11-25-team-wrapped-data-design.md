@@ -173,7 +173,7 @@ Top-N records per scope, best first. Each record holds the value and what locate
 | Biggest PR by lines changed | additions + deletions (enriched) |
 | PR with the most reviews | reviews grouped by PR |
 | Longest-lived PR | PR created to merged or closed |
-| Most review rounds on one PR | changes-requested reviews followed by new commits |
+| Most review rounds on one PR (rounds = changes-requested reviews on one PR) | reviews with state `changes_requested`, grouped by PR |
 | Biggest single commit (lines, files) | commit stats (enriched) |
 | Busiest day (commits, merged PRs) | timestamps |
 | Busiest month (commits per month) | timestamps |

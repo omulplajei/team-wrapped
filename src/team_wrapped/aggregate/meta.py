@@ -19,7 +19,8 @@ def build_meta(ctx: Context, partial_datasets, now: datetime.datetime | None = N
     for metric in _ENRICHED:
         records = ctx.raw.records.get(metric, [])
         if records:
-            coverage[metric] = round(sum(1 for r in records if r.get("enriched")) / len(records), 2)
+            enriched = sum(1 for r in records if r.get("enriched") is True)
+            coverage[metric] = enriched * 100 // len(records) / 100      # rounded down: 299 of 300 is 0.99, not 1.0
     meta = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "period": {"since": ctx.config.since, "until": ctx.config.until},

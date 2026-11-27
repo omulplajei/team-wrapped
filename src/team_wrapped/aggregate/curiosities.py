@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 
 from .common import Resolver, incomplete, is_own_review, pr_authors, whole_number
 from .context import Context
-from .delivery_volume import has_line_stats
+from .delivery_volume import has_line_stats, is_merge
 from .window import parse_timestamp
 
 
@@ -79,11 +79,11 @@ def _enriched_pr(value_of):
 
 
 def _pr_field(name):
-    return lambda pr: pr[name] if pr.get("enriched") and whole_number(pr.get(name)) else None
+    return lambda pr: pr[name] if pr.get("enriched") is True and whole_number(pr.get(name)) else None
 
 
 def _pr_lines(pr):
-    if pr.get("enriched") and whole_number(pr.get("additions")) and whole_number(pr.get("deletions")):
+    if pr.get("enriched") is True and whole_number(pr.get("additions")) and whole_number(pr.get("deletions")):
         return pr["additions"] + pr["deletions"]
     return None
 
@@ -98,12 +98,12 @@ def _longest_lived_pr(ctx, repos, data):
 
 
 def _biggest_commit(ctx, repos, data):
-    commits = data["commits"]
+    commits = [c for c in data["commits"] if not is_merge(c)]      # a merge repeats the lines it merges
     entries = []
     for c in commits:
         if has_line_stats(c) and whole_number(c.get("files_changed")) and isinstance(c.get("sha"), str):
             value = c["additions"] + c["deletions"]
-            entries.append((value, (c["authored_at"], c["repo"], c["sha"]),
+            entries.append((value, (parse_timestamp(c["authored_at"]), c["repo"], c["sha"]),
                             {"value": value, "repo": c["repo"], "sha": c["sha"], "files": c["files_changed"]}))
     gap = sum(1 for c in commits if not (has_line_stats(c) and whole_number(c.get("files_changed"))))
     return entries, gap > 0

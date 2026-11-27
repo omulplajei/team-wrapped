@@ -62,8 +62,8 @@ def test_lines_sum_enriched_commits_and_are_partial_with_unenriched_ones(fx):
         commit("old", at="2025-06-01T10:00:00Z", enriched=True, additions=999, deletions=999, files_changed=1)])
     fx.raw("beta-web", "commits.jsonl", [commit("b", enriched=True, additions=10, deletions=40, files_changed=2)])
     scopes, partial = build_delivery_volume(fx.context())
-    assert scopes["all"]["lines"] == {"total_additions": 115, "total_deletions": 70, "total_net": 45}
-    assert scopes["group:alpha"]["lines"] == {"total_additions": 105, "total_deletions": 30, "total_net": 75}
+    assert scopes["all"]["lines"] == {"total_additions": 110, "total_deletions": 70, "total_net": 40}      # merge skipped
+    assert scopes["group:alpha"]["lines"] == {"total_additions": 100, "total_deletions": 30, "total_net": 70}
     assert partial == ["delivery_volume.lines"]
 
 
@@ -103,3 +103,35 @@ def test_own_reviews_are_excluded_through_aliases(fx):
     fx.raw("alpha-api", "reviews.jsonl", [review(1, login="Ada-Dev"), review(1, login="grace-codes")])
     scopes, _ = build_summary(fx.context())
     assert scopes["all"]["totals"]["reviews"] == 1
+
+
+def test_merge_commits_neither_add_lines_nor_make_the_dataset_partial(fx):
+    setup(fx)
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("a", enriched=True, additions=10, deletions=2, files_changed=1),
+        commit("m", is_merge=True),                                                    # no stats, merge: ignored
+        commit("m2", is_merge=True, enriched=True, additions=500, deletions=500, files_changed=9)])
+    scopes, partial = build_delivery_volume(fx.context())
+    assert scopes["all"]["lines"] == {"total_additions": 10, "total_deletions": 2, "total_net": 8}
+    assert partial == []
+
+
+def test_only_merge_commits_means_no_lines_dataset(fx):
+    setup(fx)
+    fx.raw("alpha-api", "commits.jsonl", [commit("m", is_merge=True, enriched=True, additions=5, deletions=5, files_changed=1)])
+    assert build_delivery_volume(fx.context()) == ({"all": {}, "group:alpha": {}}, [])
+
+
+def test_enriched_must_be_the_boolean_true(fx):
+    setup(fx)
+    fx.raw("alpha-api", "commits.jsonl", [commit("a", enriched="false", additions=10, deletions=2, files_changed=1),
+                                          commit("b", enriched=1, additions=10, deletions=2, files_changed=1)])
+    scopes, partial = build_delivery_volume(fx.context())
+    assert scopes == {"all": {}, "group:alpha": {}} and partial == ["delivery_volume.lines"]
+
+
+def test_cheap_then_enriched_version_of_a_commit_counts_once(fx):
+    setup(fx)
+    fx.raw("alpha-api", "commits.jsonl", [commit("a"), commit("a", enriched=True, additions=3, deletions=1, files_changed=1)])
+    scopes, partial = build_delivery_volume(fx.context())
+    assert scopes["all"]["lines"]["total_additions"] == 3 and partial == []
