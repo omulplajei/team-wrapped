@@ -27,10 +27,16 @@ DEFAULT_COLORS = {
 
 _VARIABLES = {key: "--tw-" + {"background": "bg"}.get(key, key) for key in DEFAULT_COLORS}
 
-_COLOR = re.compile(r"#[0-9a-fA-F]{3,8}|rgba?\(\s*[0-9.]+%?\s*(,\s*[0-9.]+%?\s*){2,3}\)")
-_FAMILY = r"\"[A-Za-z0-9 ._-]+\"|'[A-Za-z0-9 ._-]+'|[A-Za-z0-9_-][A-Za-z0-9 _-]*"
+_NUMBER = r"\d+(?:\.\d+)?%?"
+_COLOR = re.compile(
+    rf"#(?:[0-9a-fA-F]{{3}}|[0-9a-fA-F]{{4}}|[0-9a-fA-F]{{6}}|[0-9a-fA-F]{{8}})"
+    rf"|rgba?\(\s*{_NUMBER}\s*(?:,\s*{_NUMBER}\s*){{2,3}}\)"
+)
+_WORD = r"[A-Za-z_-][A-Za-z0-9_-]*"  # an unquoted family word must not start with a digit
+_FAMILY = rf"\"[A-Za-z0-9 ._-]+\"|'[A-Za-z0-9 ._-]+'|{_WORD}(?: {_WORD})*"
 _FONT = re.compile(rf"(?:{_FAMILY})(?:\s*,\s*(?:{_FAMILY})){{0,9}}")
 _THEME_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+_IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg")
 _KEYS = {"name", "colors", "font", "logo", "backdrop"}
 _BACKDROP_KEYS = {"images", "opacity"}
 
@@ -63,6 +69,8 @@ def _asset(folder: Path, value, what: str) -> Path:
         raise LoadError(inside) from None
     if not path.is_file():
         raise LoadError(f"{folder}: {what} '{value}' not found")
+    if path.suffix.lower() not in _IMAGE_SUFFIXES:
+        raise LoadError(f"{folder}: {what} '{value}' must be an image file ({', '.join(_IMAGE_SUFFIXES)})")
     return path
 
 

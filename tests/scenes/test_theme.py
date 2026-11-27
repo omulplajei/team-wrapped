@@ -103,7 +103,7 @@ def _font_theme(tmp_path, font):
 
 @pytest.mark.parametrize("font", [
     '"x', "'x", '"a" "b"', " ", "Arial\n", 'a; } b {',
-    ", ".join(f"f{i}" for i in range(11)), "a" * 201,
+    ", ".join(f"f{i}" for i in range(11)), "a" * 201, "Acme 2",
 ])
 def test_bad_fonts_are_rejected(tmp_path, font):
     with pytest.raises(LoadError, match="font"):
@@ -123,7 +123,16 @@ def test_colour_with_trailing_newline_is_rejected(tmp_path, value):
         load_theme("brand", [tmp_path])
 
 
-@pytest.mark.parametrize("value", ["#fff", "rgba(1, 2, 3, 0.5)"])
+@pytest.mark.parametrize("value", ["#12345", "#12", "#1234567", "rgb(1.2.3, 50%, 0)", "rgb(1,2)"])
+def test_malformed_colours_are_rejected(tmp_path, value):
+    import yaml
+    make_theme(tmp_path, yml=yaml.safe_dump({"colors": {"accent": value}}))
+    with pytest.raises(LoadError, match="invalid value"):
+        load_theme("brand", [tmp_path])
+
+
+@pytest.mark.parametrize("value", ["#fff", "#ffff", "#112233", "#11223344", "rgba(1, 2, 3, 0.5)",
+                                   "rgb(10%, 20%, 30%)"])
 def test_good_colours_are_accepted(tmp_path, value):
     import yaml
     make_theme(tmp_path, yml=yaml.safe_dump({"colors": {"accent": value}}))
@@ -201,3 +210,19 @@ def test_logo_reused_as_a_backdrop_image_is_allowed(tmp_path):
     make_theme(tmp_path, yml="logo: assets/logo.png\nbackdrop:\n  images: [assets/logo.png]\n")
     theme = load_theme("brand", [tmp_path])
     assert theme.backdrop_images == [theme.logo]
+
+
+@pytest.mark.parametrize("yml, files", [
+    ("logo: theme.yml\n", ()),
+    ("logo: assets/x.html\n", ("x.html",)),
+    ("backdrop:\n  images: [assets/x.txt]\n", ("x.txt",)),
+])
+def test_non_image_assets_are_rejected(tmp_path, yml, files):
+    make_theme(tmp_path, yml=yml, files=files)
+    with pytest.raises(LoadError, match=r"\.png.*\.svg|allowed"):
+        load_theme("brand", [tmp_path])
+
+
+def test_upper_case_image_suffix_is_accepted(tmp_path):
+    make_theme(tmp_path, yml="logo: assets/LOGO.PNG\n", files=("LOGO.PNG",))
+    assert load_theme("brand", [tmp_path]).logo.name == "LOGO.PNG"
