@@ -5,6 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from .aggregate import aggregate
 from .config import load_config
 from .derive import write_repos
 from .scenes.build import BuildError, build
@@ -42,6 +43,17 @@ def _cmd_derive_repos(args) -> int:
     return 0
 
 
+def _cmd_aggregate(args) -> int:
+    try:
+        written = aggregate(Path(args.root) / args.data)
+    except LoadError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    for path in written:
+        print(f"wrote {path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="team-wrapped")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -59,8 +71,13 @@ def main(argv: list[str] | None = None) -> int:
     derive = sub.add_parser("derive-repos", help="write derived/repos.json from the collection config")
     derive.add_argument("--root", default=".", help="repository root (default: current directory)")
     derive.add_argument("--data", default="data", help="data folder under the root (default: data)")
+    agg = sub.add_parser("aggregate", help="write derived/*.json from data/raw")
+    agg.add_argument("--root", default=".", help="repository root (default: current directory)")
+    agg.add_argument("--data", default="data", help="data folder under the root (default: data)")
     args = parser.parse_args(argv)
     try:
+        if args.command == "aggregate":
+            return _cmd_aggregate(args)
         if args.command == "derive-repos":
             return _cmd_derive_repos(args)
         if args.command == "validate-script":
