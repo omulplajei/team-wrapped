@@ -141,3 +141,40 @@ test("countUp takes an optional ease and keeps power1.out by default", () => {
   assert.strictEqual(calls[0].vars.ease, "power1.out");
   assert.strictEqual(calls[1].vars.ease, "expo.out");
 });
+
+function countCalls(to, at, duration, tail) {
+  const calls = [];
+  const state = { text: "" };
+  const el = { textContent: "" };
+  const tl = { to: (target, vars, when) => { calls.push({ target, vars, at: when }); return tl; } };
+  presets.countUp(tl, el, to, at, duration, "expo.out", tail);
+  const run = () => calls.forEach((c) => { c.target.v = c.vars.v; c.vars.onUpdate(); });
+  return { calls, el, run };
+}
+const r2 = (n) => Math.round(n * 100) / 100;
+
+test("without a tail countUp makes one tween to the total, as before", () => {
+  const { calls } = countCalls(10, 1, 2, undefined);
+  assert.strictEqual(calls.length, 1);
+  assert.strictEqual(calls[0].vars.v, 10);
+  assert.strictEqual(calls[0].vars.ease, "expo.out");
+});
+
+test("a tail counts fast to total minus the beats, then adds one per beat after each pause", () => {
+  const { calls, el, run } = countCalls(10, 1, 3, [0.25, 0.5, 1.0]);
+  assert.deepStrictEqual(calls.map((c) => c.vars.v), [7, 8, 9, 10]);
+  assert.strictEqual(calls[0].vars.duration, 3);
+  assert.strictEqual(calls[0].at, 1);
+  assert.deepStrictEqual(calls.slice(1).map((c) => r2(c.at)), [4.25, 4.75, 5.75]);      // 1 + 3, then + the pauses
+  assert.ok(calls.slice(1).every((c) => c.vars.duration <= 0.05 && c.vars.ease === "none"));
+  run();
+  assert.strictEqual(el.textContent, "10");                                              // exact total at the end
+});
+
+test("invalid tail entries are ignored and the beats never exceed the total", () => {
+  const { calls } = countCalls(10, 0, 1, [0, -1, "x", NaN, Infinity, 0.5]);
+  assert.deepStrictEqual(calls.map((c) => c.vars.v), [9, 10]);                           // only 0.5 is valid
+  const small = countCalls(2, 0, 1, [1, 1, 1]);
+  assert.deepStrictEqual(small.calls.map((c) => c.vars.v), [0, 1, 2]);                  // capped at the total
+  assert.deepStrictEqual(countCalls(10, 0, 1, "slow").calls.map((c) => c.vars.v), [10]);
+});

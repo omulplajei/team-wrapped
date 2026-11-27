@@ -61,15 +61,22 @@
     }, at);
   }
 
-  function countUp(tl, el, to, at = 0, duration = 1.2, ease = "power1.out") {
+  function countUp(tl, el, to, at = 0, duration = 1.2, ease = "power1.out", tail = []) {
     const state = { v: 0 };
     el.textContent = format(0);
-    return tl.to(state, {
-      v: to,
-      duration,
-      ease,
-      onUpdate: () => { el.textContent = format(Math.round(state.v)); },
-    }, at);
+    const show = () => { el.textContent = format(Math.round(state.v)); };
+    // Tail beats: the last few increments land one at a time, each after its own pause.
+    const pauses = (Array.isArray(tail) ? tail : [])
+      .filter((p) => typeof p === "number" && Number.isFinite(p) && p > 0)
+      .slice(0, Math.max(0, Math.round(to)));
+    const main = to - pauses.length;
+    tl.to(state, { v: main, duration, ease, onUpdate: show }, at);
+    let when = at + duration;
+    pauses.forEach((pause, i) => {
+      when += pause;
+      tl.to(state, { v: main + i + 1, duration: 0.05, ease: "none", onUpdate: show }, when);
+    });
+    return tl;
   }
 
   // Largest folder size (px) whose grid of `count` folders fits in width x height.

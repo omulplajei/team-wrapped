@@ -37,7 +37,7 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
         "we-shipped", "we-looked-after-each-other", "year-in-numbers",
         "repos-touched", "we-changed-the-code", "how-many-of-us",
     ]
-    assert [s["duration"] for s in payload["scenes"]] == [8.0, 6.0, 8.0, 8.0, 6.0, 10.0]
+    assert [s["duration"] for s in payload["scenes"]] == [9.0, 6.0, 8.0, 8.0, 6.0, 10.0]
     assert scenes["we-shipped"]["partial"] == []
     assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]

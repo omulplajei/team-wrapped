@@ -118,3 +118,29 @@ test("invalid count settings fall back to the defaults", () => {
   assert.strictEqual(bad.ease, "power1.out");
   assert.strictEqual(hero({ ...PARAMS, count_duration: -1 }).duration, 2.5);
 });
+
+test("count_tail makes the last increments land as separate beats after the main count", () => {
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const params = { ...PARAMS, heading: "H", count_duration: 3.0, count_ease: "expo.out", count_tail: [0.25, 0.35, 0.5, 0.7, 1.0] };
+  const hero = render(params, DATA).tl.calls.filter((c) => c.kind === "to" && "v" in c.vars);
+  // DATA has 1,240 commits: the main count stops 5 short, then five +1 beats
+  const heroCalls = hero.filter((c) => [1235, 1236, 1237, 1238, 1239, 1240].includes(c.vars.v));
+  assert.deepStrictEqual(heroCalls.map((c) => c.vars.v), [1235, 1236, 1237, 1238, 1239, 1240]);
+  assert.strictEqual(round2(heroCalls[0].at), 1.0);                                      // heading delay 0.7 + 0.3
+  assert.deepStrictEqual(heroCalls.slice(1).map((c) => round2(c.at)), [4.25, 4.6, 5.1, 5.8, 6.8]);
+});
+
+test("no count_tail, or an invalid one, keeps a single hero tween", () => {
+  const heroTweens = (params) => render(params, DATA).tl.calls
+    .filter((c) => c.kind === "to" && "v" in c.vars && c.vars.v >= 1200);
+  assert.strictEqual(heroTweens(PARAMS).length, 1);
+  assert.strictEqual(heroTweens({ ...PARAMS, count_tail: "slow" }).length, 1);
+  assert.strictEqual(heroTweens({ ...PARAMS, count_tail: [] }).length, 1);
+});
+
+test("supporting figures never get tail beats", () => {
+  const sub = render({ ...PARAMS, count_tail: [0.2, 0.3] }, DATA).tl.calls
+    .filter((c) => c.kind === "to" && "v" in c.vars && c.vars.v <= 400);                 // merged_prs 310
+  assert.strictEqual(sub.length, 1);
+  assert.strictEqual(sub[0].vars.v, 310);
+});
