@@ -2,7 +2,7 @@
 
 Collect GitHub activity for a set of repositories and play it back as a "wrapped" page: scenes linked by a script, with animation and background music.
 
-Status: the scene, validation and player layers work on the sample data. The collector and aggregator are not built yet; see `docs/superpowers/`.
+Status: the scene, validation and player layers work on the sample data. The aggregator builds the derived data from raw records; the collector that writes those records is not built yet; see `docs/superpowers/`.
 
 ## Try it on the sample data
 
@@ -65,6 +65,16 @@ PYTHONPATH=src python3 -m team_wrapped derive-repos --data data
 ```
 
 For now every configured repository counts as "touched"; the file is marked `"basis": "configuration"` until activity is collected from GitHub.
+
+## Aggregating raw data
+
+`aggregate` reads `data/config.yml` and the raw JSON-lines files in `data/raw/<repo>/` (`commits.jsonl`, `pull_requests.jsonl`, `reviews.jsonl`, `comments.jsonl`, `status.json`; the exact fields are in section 5.1 of the spec) and writes `data/derived/`: `summary`, `delivery_volume`, `curiosities`, `contributors`, `repos` and `meta.json`, for the scopes `all` and `group:<name>`. It never writes to `raw/`, and running it twice gives the same files (apart from `generated_at`).
+
+```bash
+PYTHONPATH=src python3 -m team_wrapped aggregate --data data
+```
+
+Datasets computed from incomplete data (a repository that is not `complete`, or commits and PRs not yet enriched) are listed in `meta.json` under `partial_datasets`. The collector (`collect`, not built yet) will write the raw files, so for now you provide them yourself; `data-sample/` has derived files only and no raw records yet.
 
 ## Themes
 

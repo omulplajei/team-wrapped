@@ -1,5 +1,6 @@
 # Sample collection config: the same layout as your private data/config.yml.
-# `derive-repos` turns it into data/derived/repos.json for the repositories scene.
+# `aggregate` turns the raw records collected under data/raw (written by `collect`, not built yet) into data/derived;
+# the sample has no raw records, so `derive-repos` writes data/derived/repos.json from this file instead.
 org: sample-org
 since: 2026-01-01
 until: 2026-12-31

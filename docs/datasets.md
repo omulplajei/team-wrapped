@@ -33,6 +33,8 @@ Metric: any. Not time-bucketed. A repository is "touched" when it has at least o
 | `delivery_volume.prs` | `opened`, `merged` per bucket | pull_requests | no |
 | `delivery_volume.pr_size` | distribution of `lines_changed`, `files_changed`, `commit_count` for merged PRs | pull_requests | yes |
 
+`lines` totals sum the enriched commits authored inside the window, merge commits included when they carry the numbers. The dataset is omitted when no commit in scope is enriched, and partial when any in-window commit in scope is not.
+
 ## review_collab
 | Dataset | Fields | Metric |
 |---|---|---|
@@ -48,12 +50,16 @@ Metric: any. Not time-bucketed. A repository is "touched" when it has at least o
 | Dataset | Fields |
 |---|---|
 | `summary.totals` | commits, merged PRs, reviews, comments for the window |
+
+`summary.totals` counts every commit by author date (merge commits and bots included), every PR by merge date, every review by submitted date except reviews written by the PR's own author, and every comment of either kind by created date. Totals of disabled metrics are not written.
 | `summary.period_change` | change against the previous period, per statistic |
 | `summary.busiest_quietest` | busiest and quietest bucket per statistic |
 | `summary.activity_by_weekday`, `summary.activity_by_hour` | counts in the configured timezone |
 
 ## curiosities
 Each dataset is a **list** of up to N records, best first (`value`, plus the fields named below). Not time-bucketed, but limited to the scope and window. Scenes show the first record. Records never carry people or PR titles. A dataset is empty (or absent) when there is nothing to report: records with a `value` of 0 or null fields are never written. Every record carries all the fields of its row. Dates and months are calendar dates in the configured time zone.
+
+Windowing: comment and review curiosities count the comments and reviews whose own timestamp is inside the window (reviews by the PR's own author do not count); PR curiosities use the PRs created or merged inside the window; commit, day, month and streak curiosities use the local date of the commit author date or PR merge date. Ties go to the earlier date, then the repo name, then the PR number. Streaks and busiest days list distinct runs and days, so the list can hold several records. `longest_lived_pr` skips open PRs and counts whole days. `most_review_rounds_pr` counts `changes_requested` reviews, so it is computed from reviews and is not affected by PR enrichment.
 
 | Dataset | Record fields | Metric | Enriched |
 |---|---|---|---|
