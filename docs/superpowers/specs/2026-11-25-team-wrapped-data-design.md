@@ -181,7 +181,7 @@ Not a separate family. Where `groups` is configured, every statistic above is al
 - **Field paths.** A field such as `total_net` is a key of the dataset object. A path such as `list.kind` means the key `kind` on the items of the list `list`. A field that is absent on some items (for example `list.login` on unlinked contributors) counts as present if any item has it.
 - **Time-bucketed datasets.** These hold one series per bucket size, keyed `day`, `week`, `month`, `quarter` or `year`. Each series is a list of `{"start": "<date>", ...fields}` entries ordered by `start`. The sample data does not exercise this shape yet, so it will be confirmed by the first scene that needs a time series.
 - **Curiosities.** A list of up to `top_n` records, each holding `value`, `repo` and a `pr_number` or `sha`, sorted by `value` descending.
-- **Repositories touched.** `repos.json` holds `touched` with `total` and `list` (items `{"name": ...}`) per scope. A repository is touched when it has at least one commit, pull request, review or comment inside the window, among the enabled metrics.
+- **Repositories touched.** `repos.json` holds `touched` with `total` and `list` (items `{"name": ...}`) per scope. A repository is touched when it has at least one commit (author date), pull request (created or merged date), review (submitted date) or comment (created date) inside the window, from any author including bots, among the enabled metrics. `total` equals the length of `list`, and `list` is ordered alphabetically by `name`. The dataset is partial when any in-scope repository's status for an enabled metric is not complete. An empty list counts as missing data for scenes that require `list.name`, so scripts mark such scenes `on_missing_data: skip`.
 - **Paths to files.** `avatar_file` is relative to the data root (`data/` or `data-sample/`).
 - **Privacy.** Derived files never contain author emails (section 6).
 - **Metadata.** `meta.json` has no `scopes`. It holds `generated_at`, `period`, per-repo and per-metric `status`, `enrichment_coverage`, `partial_datasets` and the resolved `groups`.
@@ -292,10 +292,10 @@ One folder per type in `web/scene-types/<type>/`:
 - `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`. In the first version the params schema is the list `required_params`; `validate-script` checks that each is present. Params named `items` and `supporting` carry `{label, value}` pairs whose `value` is a data reference, and a top-level `value` param is a data reference only for types that list it in `required_params`; `validate-script` checks that each reference resolves to a number. A param named `names` is a data reference that must resolve to a list.
 - `render.js`: `export default { render(ctx) }`, where `ctx` is `{container, data, params, duration, partial, scope, period, gsap, presets}`. It returns a GSAP timeline of about `duration` seconds. It touches only `container`, and it receives the data for the scene's `requires` in the shape of the derived files (section 7.6). `partial` lists the datasets computed from incomplete data, so a renderer may label them. The build rewrites the single `export default` into a registry assignment and rejects `import` lines, because pages open from disk and browsers block module imports on `file://`.
 
-Initial types: `message`, `stats`, `bignumber` (one hero number with optional supporting figures), `headcount`, `curiosity`, and a media type for images and short video.
+Initial types: `message`, `stats`, `bignumber` (one hero number with optional supporting figures), `repogrid` (a heading with a highlighted count and a grid of folders), `headcount`, `curiosity`, and a media type for images and short video.
 
 ### Animation presets
-`web/presets/` holds shared building blocks for renderers and transitions: fade, slide, scale-in, count-up numbers, staggered lists and pop-in avatars. New presets are added here, and any renderer can use them.
+`web/presets/` holds shared building blocks for renderers and transitions: fade, slide, scale-in, count-up numbers, staggered lists, pop-in avatars and bubble-in. New presets are added here, and any renderer can use them.
 
 ### Controls
 - **Start screen** with a Play button. The click is also what lets the browser start audio.

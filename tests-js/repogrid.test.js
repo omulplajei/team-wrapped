@@ -14,10 +14,10 @@ const PARAMS = {
   names: "repos.touched.list",
 };
 
-function render(params, data) {
+function render(params, data, elDefaults = {}) {
   const tl = fakeTimeline();
   const container = makeEl("section");
-  const result = loadRenderer("repogrid").render({
+  const result = loadRenderer("repogrid", elDefaults).render({
     container, data, params, partial: [], duration: 8, gsap: { timeline: () => tl }, presets,
   });
   return { tl, container, result };
@@ -77,4 +77,14 @@ test("no repositories shows the heading with 0 and no grid", () => {
 test("a missing count shows a dash", () => {
   const { container } = render(PARAMS, {});
   assert.strictEqual(find(container, "tw-repos-count")[0].textContent, "–");
+});
+
+test("the folder size is fitted to the measured space, with size classes as the fallback", () => {
+  const defaults = { clientWidth: 900, clientHeight: 600, offsetTop: 24, offsetHeight: 60 };
+  const grid = render(PARAMS, dataFor(NAMES), defaults).container.children[0].children[1];
+  const fit = presets.fitFolderSize(3, 900, 600 - 24 - 60 - 24);
+  assert.strictEqual(grid.style["--tw-folder"], fit.size + "px");
+  assert.strictEqual(grid.style["--tw-folder-font"], fit.font + "px");
+  const bare = render(PARAMS, dataFor(NAMES)).container.children[0].children[1];
+  assert.strictEqual(bare.style["--tw-folder"], undefined);
 });

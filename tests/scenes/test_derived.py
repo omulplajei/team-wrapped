@@ -47,6 +47,6 @@ def test_repos_touched_on_sample(sample_root):
     everything = d.dataset("repos.touched", "all")
     assert everything["total"] == 14
     assert len(everything["list"]) == 14
-    assert everything["list"][0] == {"name": "sample-api"}
+    assert everything["list"][0] == {"name": "sample-analytics"}
     alpha = d.dataset("repos.touched", "group:alpha")
     assert alpha["total"] == 9 and len(alpha["list"]) == 9

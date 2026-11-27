@@ -22,6 +22,72 @@
       "pull_requests": "complete",
       "reviews": "complete",
       "comments": "complete"
+    },
+    "sample-auth": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-billing": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-search": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-notifications": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-gateway": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-mobile": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-analytics": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-infra": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-cli": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-sdk": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
+    },
+    "sample-design-system": {
+      "commits": "complete",
+      "pull_requests": "complete",
+      "reviews": "complete",
+      "comments": "complete"
     }
   },
   "enrichment_coverage": {

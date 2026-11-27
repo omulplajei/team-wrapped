@@ -62,3 +62,32 @@ test("bubbleIn adds one staggered from-tween with deterministic offsets and retu
   assert.ok(v.y(0) > 0);                     // bubbles rise from below
   assert.notStrictEqual(v.x(1), v.x(2));     // and come from different sides
 });
+
+function neededHeight(count, size, width) {
+  const gapX = size * 0.14, gapY = size * 0.2;
+  const cols = Math.max(1, Math.floor((width + gapX) / (size + gapX)));
+  const rows = Math.ceil(count / cols);
+  return rows * (size * 0.75) + (rows - 1) * gapY;
+}
+
+test("fitFolderSize gives the largest size when there is plenty of room", () => {
+  assert.strictEqual(presets.fitFolderSize(3, 1120, 600).size, 128);
+});
+
+test("fitFolderSize fits many repositories into the given area", () => {
+  const big = presets.fitFolderSize(45, 1120, 574);
+  assert.ok(big.size >= 36);
+  assert.ok(neededHeight(45, big.size, 1120) <= 574);
+  const phone = presets.fitFolderSize(14, 311, 614);
+  assert.ok(neededHeight(14, phone.size, 311) <= 614);
+});
+
+test("fitFolderSize never grows with more repositories", () => {
+  const sizes = [10, 40, 150].map((n) => presets.fitFolderSize(n, 1120, 574).size);
+  assert.ok(sizes[0] >= sizes[1] && sizes[1] >= sizes[2]);
+});
+
+test("fitFolderSize falls back to the minimum and keeps the font readable", () => {
+  assert.deepStrictEqual(presets.fitFolderSize(500, 300, 300), { size: 36, font: 5 });
+  for (const n of [1, 40, 500]) assert.ok(presets.fitFolderSize(n, 600, 400).font >= 5);
+});

@@ -3,18 +3,18 @@ const path = require("node:path");
 
 // A minimal DOM: just enough for the renderers, which only build elements.
 function makeEl(tag) {
-  const el = { tag, className: "", textContent: "", children: [] };
+  const el = { tag, className: "", textContent: "", children: [], style: { setProperty(k, v) { this[k] = v; } } };
   el.append = (...kids) => { el.children.push(...kids); };
   el.appendChild = (kid) => { el.children.push(kid); return kid; };
   return el;
 }
 
 // Load render.js the way the build does: `export default` becomes an assignment.
-function loadRenderer(type) {
+function loadRenderer(type, elDefaults = {}) {
   const file = path.join(__dirname, "..", "web", "scene-types", type, "render.js");
   const source = fs.readFileSync(file, "utf8").replace("export default", "module.exports =");
   const module = { exports: {} };
-  new Function("module", "document", source)(module, { createElement: makeEl });
+  new Function("module", "document", source)(module, { createElement: (tag) => Object.assign(makeEl(tag), elDefaults) });
   return module.exports;
 }
 

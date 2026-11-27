@@ -9,13 +9,10 @@
         "total": 14,
         "list": [
           {
+            "name": "sample-analytics"
+          },
+          {
             "name": "sample-api"
-          },
-          {
-            "name": "sample-web"
-          },
-          {
-            "name": "sample-docs"
           },
           {
             "name": "sample-auth"
@@ -24,31 +21,34 @@
             "name": "sample-billing"
           },
           {
-            "name": "sample-search"
+            "name": "sample-cli"
           },
           {
-            "name": "sample-notifications"
+            "name": "sample-design-system"
+          },
+          {
+            "name": "sample-docs"
           },
           {
             "name": "sample-gateway"
           },
           {
-            "name": "sample-mobile"
-          },
-          {
-            "name": "sample-analytics"
-          },
-          {
             "name": "sample-infra"
           },
           {
-            "name": "sample-cli"
+            "name": "sample-mobile"
+          },
+          {
+            "name": "sample-notifications"
           },
           {
             "name": "sample-sdk"
           },
           {
-            "name": "sample-design-system"
+            "name": "sample-search"
+          },
+          {
+            "name": "sample-web"
           }
         ]
       }
@@ -61,28 +61,28 @@
             "name": "sample-api"
           },
           {
-            "name": "sample-web"
-          },
-          {
-            "name": "sample-docs"
-          },
-          {
             "name": "sample-auth"
           },
           {
             "name": "sample-billing"
           },
           {
-            "name": "sample-search"
-          },
-          {
-            "name": "sample-notifications"
+            "name": "sample-docs"
           },
           {
             "name": "sample-gateway"
           },
           {
             "name": "sample-mobile"
+          },
+          {
+            "name": "sample-notifications"
+          },
+          {
+            "name": "sample-search"
+          },
+          {
+            "name": "sample-web"
           }
         ]
       }

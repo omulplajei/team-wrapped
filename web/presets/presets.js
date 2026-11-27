@@ -66,7 +66,20 @@
     }, at);
   }
 
-  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, bubbleIn, countUp };
+  // Largest folder size (px) whose grid of `count` folders fits in width x height.
+  function fitFolderSize(count, width, height) {
+    for (let size = 128; size >= 36; size -= 2) {
+      const gapX = size * 0.14;
+      const gapY = size * 0.2;
+      const cols = Math.max(1, Math.floor((width + gapX) / (size + gapX)));
+      const rows = Math.ceil(count / cols);
+      const needed = rows * (size * 0.75) + (rows - 1) * gapY;
+      if (needed <= height) return { size, font: Math.max(5, Math.round(size * 0.1 * 10) / 10) };
+    }
+    return { size: 36, font: 5 };
+  }
+
+  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, bubbleIn, countUp, fitFolderSize };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

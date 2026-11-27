@@ -52,20 +52,20 @@ body:not(.tw-started) #tw-controls { display: none; }
 .tw-hero-sub-label { opacity: 0.75; font-size: 0.95rem; }
 .tw-hero-sub-partial { margin-top: 0.2rem; font-size: 0.7rem; color: #e6b450; }
 
-.tw-repos { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
+.tw-repos { position: relative; overflow: hidden; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
 .tw-repos-heading { margin-top: 1.5rem; font-size: clamp(1.6rem, 5vw, 3rem); font-weight: 700; text-align: center; }
 .tw-repos-count { color: #5eead4; font-weight: 800; font-variant-numeric: tabular-nums; }
 
 .tw-folders { --tw-folder: 8rem; --tw-folder-font: 0.8rem; margin: auto 0; display: grid;
   grid-template-columns: repeat(auto-fit, var(--tw-folder)); justify-content: center;
-  gap: 1.6rem 1.2rem; width: min(70rem, 100%); }
-.tw-folders-md { --tw-folder: 6rem; --tw-folder-font: 0.65rem; gap: 1.3rem 1rem; }
-.tw-folders-sm { --tw-folder: 4.6rem; --tw-folder-font: 0.52rem; gap: 1rem 0.7rem; }
+  gap: calc(var(--tw-folder) * 0.2) calc(var(--tw-folder) * 0.14); width: min(70rem, 100%); }
+.tw-folders-md { --tw-folder: 6rem; --tw-folder-font: 0.65rem; }
+.tw-folders-sm { --tw-folder: 4.6rem; --tw-folder-font: 0.52rem; }
 
 .tw-folder { position: relative; width: var(--tw-folder); height: calc(var(--tw-folder) * 0.75); }
 .tw-folder::before { content: ""; position: absolute; top: -0.45em; left: 0; width: 42%; height: 0.6em;
   background: #d99a2b; border-radius: 6px 6px 0 0; }
-.tw-folder-body { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+.tw-folder-body { position: absolute; inset: 0; display: flex; align-items: center; align-items: safe center; justify-content: center;
   padding: 0.3rem; background: linear-gradient(#f4c75f, #e0a93b); border-radius: 0 8px 8px 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); color: #2a1f05; font-weight: 600;
   font-size: var(--tw-folder-font); line-height: 1.15; text-align: center; overflow: hidden; overflow-wrap: anywhere; }

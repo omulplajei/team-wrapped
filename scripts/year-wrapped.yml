@@ -6,6 +6,7 @@ scenes:
   - scene: we-shipped
   - scene: we-looked-after-each-other
   - scene: repos-touched
+    on_missing_data: skip   # an empty repo list counts as missing data, so a quiet scope skips the scene
   - scene: we-changed-the-code
     on_missing_data: skip   # needs enriched line data; the rest still plays without it
   - scene: year-in-numbers  # the recap grid of all numbers

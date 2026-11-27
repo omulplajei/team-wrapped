@@ -7,6 +7,7 @@ export default {
     const rows = presets.lookup(data, params.names);
     const names = (Array.isArray(rows) ? rows : []).map((row) => (typeof row === "string" ? row : row.name));
 
+    let grid = null;
     const wrap = document.createElement("div");
     wrap.className = "tw-repos";
 
@@ -40,7 +41,7 @@ export default {
     // Folders: one per repository, bubbling in and settling into the grid.
     if (names.length > 0) {
       const sizeClass = names.length <= 12 ? "lg" : names.length <= 30 ? "md" : "sm";
-      const grid = document.createElement("div");
+      grid = document.createElement("div");
       grid.className = "tw-folders tw-folders-" + sizeClass;
       const folders = names.map((name) => {
         const folder = document.createElement("div");
@@ -62,6 +63,15 @@ export default {
     }
 
     container.append(wrap);
+
+    // Fit the folders to the space left under the heading (needs a laid-out page; otherwise the size classes apply).
+    if (grid && wrap.clientWidth > 0 && wrap.clientHeight > 0 && grid.style && typeof grid.style.setProperty === "function") {
+      const availW = Math.min(wrap.clientWidth, 1120);
+      const availH = wrap.clientHeight - heading.offsetTop - heading.offsetHeight - 24;
+      const fit = presets.fitFolderSize(names.length, availW, availH);
+      grid.style.setProperty("--tw-folder", fit.size + "px");
+      grid.style.setProperty("--tw-folder-font", fit.font + "px");
+    }
     return tl;
   },
 };

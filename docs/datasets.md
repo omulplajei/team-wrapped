@@ -19,7 +19,7 @@ Metric: any. Not time-bucketed.
 | `list[].first_activity`, `last_activity` | dates |
 
 ## repos
-Metric: any. Not time-bucketed. A repository is "touched" when it has at least one commit, pull request, review or comment inside the configured window, among the enabled metrics.
+Metric: any. Not time-bucketed. A repository is "touched" when it has at least one commit (author date), pull request (created or merged date), review (submitted date) or comment (created date) inside the window, from any author including bots, among the enabled metrics. `total` equals the length of `list`, which is ordered alphabetically by `name`. The dataset is partial when any in-scope repository's status for an enabled metric is not complete. An empty list counts as missing data for scenes that require `list.name`, so scripts mark such scenes `on_missing_data: skip`.
 
 | Dataset | Fields |
 |---|---|

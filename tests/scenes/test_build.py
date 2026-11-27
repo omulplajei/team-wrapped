@@ -7,6 +7,7 @@ import pytest
 
 from team_wrapped.cli import main
 from team_wrapped.scenes.build import BuildError, build, transform_renderer
+from team_wrapped.scenes.loader import load_script
 
 
 def read_payload(index):
@@ -323,3 +324,36 @@ def test_music_volume_must_be_a_fraction(repo_root, sample_root, tmp_path):
     for name, vol in (("mute", 0), ("full", 1)):
         result = build(name, repo_root, data, tmp_path / "dist")
         assert read_payload(result.index)["script"]["music"]["volume"] == vol
+
+
+def test_quiet_scope_skips_the_repos_scene(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    repos_file = data / "derived" / "repos.json"
+    repos = json.loads(repos_file.read_text())
+    repos["scopes"]["group:alpha"]["touched"] = {"total": 0, "list": []}
+    repos_file.write_text(json.dumps(repos))
+    (data / "scripts").mkdir(exist_ok=True)
+    (data / "scripts" / "quiet.yml").write_text(
+        "id: quiet\ntitle: Quiet\nscope: alpha\nscenes:\n"
+        "  - scene: repos-touched\n    on_missing_data: skip\n"
+        "  - scene: how-many-of-us\n")
+    result = build("quiet", repo_root, data, tmp_path / "dist")
+    assert result.skipped == ["repos-touched"]
+    assert [s["id"] for s in read_payload(result.index)["scenes"]] == ["how-many-of-us"]
+
+
+def test_year_wrapped_skips_the_repos_scene_when_data_is_missing(repo_root):
+    script = load_script("year-wrapped", [repo_root])
+    entry = next(e for e in script.scenes if e.scene == "repos-touched")
+    assert entry.on_missing_data == "skip"
+
+
+def test_repos_scene_only_shows_the_scope_repositories(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "scripts").mkdir(exist_ok=True)
+    (data / "scripts" / "alpha-only.yml").write_text(
+        "id: alpha-only\ntitle: Alpha\nscope: alpha\nscenes:\n  - scene: repos-touched\n")
+    result = build("alpha-only", repo_root, data, tmp_path / "dist")
+    html = result.index.read_text()
+    assert "sample-api" in html
+    assert "sample-analytics" not in html
