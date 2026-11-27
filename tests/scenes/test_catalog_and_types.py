@@ -45,6 +45,8 @@ def test_scene_types_load_from_web(repo_root):
     assert types["cast"].default_duration == 14.0
     assert types["cast"].required_params == ["stages"]
     assert types["message"].dir.name == "message"
+    assert types["capability-flow"].default_duration == 30.0
+    assert types["capability-flow"].required_params == ["groups", "window"]
 
 
 def test_scene_type_name_must_match_folder(tmp_path):

@@ -7,6 +7,7 @@ def test_validate_year_wrapped_on_sample(repo_root, capsys):
     assert code == 0
     assert "year-in-numbers: partial" in out
     assert "how-many-of-us: supported" in out
+    assert "capability-commits: supported" in out
 
 
 def test_validate_reports_failure(tmp_path, repo_root, capsys):

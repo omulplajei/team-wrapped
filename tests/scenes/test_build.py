@@ -38,9 +38,9 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
         "curiosity-busiest-month", "curiosity-busiest-day", "curiosity-longest-streak",
         "curiosity-longest-conversation", "curiosity-most-reviewed-pr",
         "curiosity-most-commits-pr", "curiosity-spring-cleaning",
-        "repos-touched", "we-changed-the-code", "how-many-of-us",
+        "capability-commits", "repos-touched", "we-changed-the-code", "how-many-of-us",
     ]
-    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 8.0, 6.0, 14.0]
+    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 30.0, 8.0, 6.0, 14.0]
     assert scenes["we-shipped"]["partial"] == []
     assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
@@ -62,6 +62,7 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     assert 'TeamWrapped.sceneTypes["repogrid"]' in html
     assert 'TeamWrapped.sceneTypes["sequence"]' in html
     assert 'TeamWrapped.sceneTypes["curiosity"]' in html
+    assert 'TeamWrapped.sceneTypes["capability-flow"]' in html
     assert 'TeamWrapped.sceneTypes["message"]' not in html   # only used types are inlined
     assert "export default" not in html
 
@@ -76,7 +77,7 @@ def test_build_skips_both_line_data_scenes_when_lines_are_missing(repo_root, sam
         "curiosity-busiest-month", "curiosity-busiest-day", "curiosity-longest-streak",
         "curiosity-longest-conversation", "curiosity-most-reviewed-pr",
         "curiosity-most-commits-pr", "curiosity-spring-cleaning",
-        "repos-touched", "how-many-of-us"]
+        "capability-commits", "repos-touched", "how-many-of-us"]
 
 
 def test_build_fails_when_a_scene_is_unsupported(repo_root, sample_root, tmp_path):
@@ -354,6 +355,46 @@ def test_quiet_scope_skips_the_repos_scene(repo_root, sample_root, tmp_path):
     result = build("quiet", repo_root, data, tmp_path / "dist")
     assert result.skipped == ["repos-touched"]
     assert [s["id"] for s in read_payload(result.index)["scenes"]] == ["how-many-of-us"]
+
+
+def test_capability_scene_embeds_the_commit_flow_of_scope_all(repo_root, sample_root, tmp_path):
+    result = build("year-wrapped", repo_root, sample_root, tmp_path / "dist")
+    scene = next(s for s in read_payload(result.index)["scenes"] if s["id"] == "capability-commits")
+    assert scene["type"] == "capability-flow"
+    assert scene["scope"] == "all"
+    assert scene["partial"] == []
+    assert scene["params"]["heading"] == "Every commit, one block"
+    assert "layout" not in scene["params"]
+    groups = scene["data"]["commit_flow.groups"]
+    assert [g["name"] for g in groups] == ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta"]
+    assert scene["data"]["commit_flow.window"] == {"days": 365, "start": "2026-01-01"}
+
+
+def test_capability_scene_plays_in_a_group_script_and_skips_without_commit_flow(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "scripts").mkdir(exist_ok=True)
+    (data / "scripts" / "alpha-blocks.yml").write_text(
+        "id: alpha-blocks\ntitle: Alpha\nscope: alpha\nscenes:\n"
+        "  - scene: capability-commits\n    scope: all\n    on_missing_data: skip\n"
+        "  - scene: how-many-of-us\n")
+    result = build("alpha-blocks", repo_root, data, tmp_path / "dist")
+    assert result.skipped == []
+    assert read_payload(result.index)["scenes"][0]["scope"] == "all"
+    (data / "derived" / "commit_flow.json").unlink()
+    result = build("alpha-blocks", repo_root, data, tmp_path / "dist2")
+    assert result.skipped == ["capability-commits"]
+    assert 'TeamWrapped.sceneTypes["capability-flow"]' not in result.index.read_text()
+
+
+def test_capability_scene_shows_partial_commit_flow(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    meta_file = data / "derived" / "meta.json"
+    meta = json.loads(meta_file.read_text())
+    meta["partial_datasets"].append("commit_flow.groups")
+    meta_file.write_text(json.dumps(meta))
+    result = build("year-wrapped", repo_root, data, tmp_path / "dist")
+    scene = next(s for s in read_payload(result.index)["scenes"] if s["id"] == "capability-commits")
+    assert scene["partial"] == ["commit_flow.groups"]
 
 
 def test_year_wrapped_skips_the_repos_scene_when_data_is_missing(repo_root):

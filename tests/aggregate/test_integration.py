@@ -83,7 +83,7 @@ def test_aggregate_output_feeds_the_year_wrapped_script(fx, repo_root, tmp_path)
     assert all(not r.skipped for r in results.values())
     assert {s: r.status for s, r in results.items() if r.status == "partial"} == {
         "year-in-numbers": "partial", "we-changed-the-code": "partial", "curiosity-most-commits-pr": "partial",
-        "curiosity-spring-cleaning": "partial"}
+        "curiosity-spring-cleaning": "partial", "capability-commits": "partial"}
     built = build("year-wrapped", repo_root, fx.root, tmp_path / "dist")
     assert built.skipped == []
 
