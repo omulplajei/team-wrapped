@@ -9,8 +9,9 @@ from team_wrapped.scenes.validate import format_report, resolve_and_validate, va
 TYPES = {
     "stats": SceneType("stats", 8.0, ["items"], Path(".")),
     "bignumber": SceneType("bignumber", 6.0, ["value", "label"], Path(".")),
+    "repogrid": SceneType("repogrid", 8.0, ["heading", "value", "names"], Path(".")),
 }
-CATALOG = {"summary.totals", "contributors"}
+CATALOG = {"summary.totals", "contributors", "repos.touched"}
 
 
 def make_data(tmp_path, partial=()):
@@ -18,6 +19,8 @@ def make_data(tmp_path, partial=()):
     d.mkdir(exist_ok=True)
     (d / "summary.json").write_text(json.dumps(
         {"scopes": {"all": {"totals": {"commits": 5}}}}))
+    (d / "repos.json").write_text(json.dumps(
+        {"scopes": {"all": {"touched": {"total": 2, "list": [{"name": "a"}, {"name": "b"}]}}}}))
     (d / "meta.json").write_text(json.dumps({"partial_datasets": list(partial)}))
     return DerivedData(tmp_path)
 
@@ -144,3 +147,20 @@ def test_value_must_be_a_number(tmp_path):
 def test_bignumber_requires_value_and_label(tmp_path):
     report = run(tmp_path, REQ, params={"value": "summary.totals.commits"}, type_="bignumber")
     assert "missing required param 'label'" in report.results[0].problems
+
+
+REPO_REQ = [{"dataset": "repos.touched", "fields": ["total", "list.name"]}]
+
+
+def test_repogrid_names_must_resolve_to_a_list(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    (tmp_path / "c").mkdir()
+    ok = {"heading": "Across {count}", "value": "repos.touched.total", "names": "repos.touched.list"}
+    assert run(tmp_path / "a", REPO_REQ, params=ok, type_="repogrid").results[0].status == "supported"
+    not_a_list = dict(ok, names="repos.touched.total")
+    report = run(tmp_path / "b", REPO_REQ, params=not_a_list, type_="repogrid")
+    assert "names 'repos.touched.total' does not resolve to a list" in report.results[0].problems
+    missing = dict(ok, names="repos.touched.nope")
+    report = run(tmp_path / "c", REPO_REQ, params=missing, type_="repogrid")
+    assert "names 'repos.touched.nope' does not resolve to a list" in report.results[0].problems

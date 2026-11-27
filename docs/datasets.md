@@ -18,6 +18,13 @@ Metric: any. Not time-bucketed.
 | `list[].kind` | `human`, `bot` or `unlinked` |
 | `list[].first_activity`, `last_activity` | dates |
 
+## repos
+Metric: any. Not time-bucketed. A repository is "touched" when it has at least one commit, pull request, review or comment inside the configured window, among the enabled metrics.
+
+| Dataset | Fields |
+|---|---|
+| `repos.touched` | `total`; `list[].name` |
+
 ## delivery_volume
 | Dataset | Fields | Metric | Enriched |
 |---|---|---|---|

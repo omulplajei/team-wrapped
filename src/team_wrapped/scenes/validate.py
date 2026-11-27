@@ -97,6 +97,9 @@ def validate_script(script: Script, scenes: dict, derived: DerivedData,
                 problems.append(f"value '{ref}' does not resolve to required data")
             elif isinstance(value, bool) or not isinstance(value, (int, float)):
                 problems.append(f"value '{ref}' is not a number")
+        names_ref = scene.params.get("names")
+        if isinstance(names_ref, str) and not isinstance(resolve_ref(datasets, names_ref), list):
+            problems.append(f"names '{names_ref}' does not resolve to a list")
 
         status = "unsupported" if problems else ("partial" if partial else "supported")
         results.append(SceneResult(

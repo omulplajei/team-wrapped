@@ -34,10 +34,21 @@
   "groups": {
     "alpha": [
       "sample-api",
-      "sample-web"
+      "sample-web",
+      "sample-docs",
+      "sample-auth",
+      "sample-billing",
+      "sample-search",
+      "sample-notifications",
+      "sample-gateway",
+      "sample-mobile"
     ],
     "beta": [
-      "sample-docs"
+      "sample-analytics",
+      "sample-infra",
+      "sample-cli",
+      "sample-sdk",
+      "sample-design-system"
     ]
   }
 }

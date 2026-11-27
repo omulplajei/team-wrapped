@@ -175,12 +175,13 @@ Not a separate family. Where `groups` is configured, every statistic above is al
 }
 ```
 
-- **Files.** `summary.json`, `delivery_volume.json`, `review_collab.json`, `curiosities.json` and `contributors.json`, plus `meta.json` (section 9).
+- **Files.** `summary.json`, `delivery_volume.json`, `review_collab.json`, `curiosities.json`, `contributors.json` and `repos.json`, plus `meta.json` (section 9).
 - **Scopes.** Keys are `all`, `group:<name>` and `repo:<name>`. `group:*` keys exist only when groups are configured. Every file has the same scope keys.
 - **Dataset names.** A dataset name `family.name` (for example `delivery_volume.lines`) resolves to `<family>.json`, then `scopes[<scope>][name]`. The `contributors` dataset has no second part, so it resolves to `scopes[<scope>]` itself.
 - **Field paths.** A field such as `total_net` is a key of the dataset object. A path such as `list.kind` means the key `kind` on the items of the list `list`. A field that is absent on some items (for example `list.login` on unlinked contributors) counts as present if any item has it.
 - **Time-bucketed datasets.** These hold one series per bucket size, keyed `day`, `week`, `month`, `quarter` or `year`. Each series is a list of `{"start": "<date>", ...fields}` entries ordered by `start`. The sample data does not exercise this shape yet, so it will be confirmed by the first scene that needs a time series.
 - **Curiosities.** A list of up to `top_n` records, each holding `value`, `repo` and a `pr_number` or `sha`, sorted by `value` descending.
+- **Repositories touched.** `repos.json` holds `touched` with `total` and `list` (items `{"name": ...}`) per scope. A repository is touched when it has at least one commit, pull request, review or comment inside the window, among the enabled metrics.
 - **Paths to files.** `avatar_file` is relative to the data root (`data/` or `data-sample/`).
 - **Privacy.** Derived files never contain author emails (section 6).
 - **Metadata.** `meta.json` has no `scopes`. It holds `generated_at`, `period`, per-repo and per-metric `status`, `enrichment_coverage`, `partial_datasets` and the resolved `groups`.
@@ -288,7 +289,7 @@ GSAP, vendored in `web/vendor/` together with its licence text and copied into e
 
 ### Scene types
 One folder per type in `web/scene-types/<type>/`:
-- `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`. In the first version the params schema is the list `required_params`; `validate-script` checks that each is present. Params named `items` and `supporting` carry `{label, value}` pairs whose `value` is a data reference, and a top-level `value` param is a data reference only for types that list it in `required_params`; `validate-script` checks that each reference resolves to a number.
+- `type.yml`: params schema, default duration, default `requires`. Used by `validate-script` and `build`. In the first version the params schema is the list `required_params`; `validate-script` checks that each is present. Params named `items` and `supporting` carry `{label, value}` pairs whose `value` is a data reference, and a top-level `value` param is a data reference only for types that list it in `required_params`; `validate-script` checks that each reference resolves to a number. A param named `names` is a data reference that must resolve to a list.
 - `render.js`: `export default { render(ctx) }`, where `ctx` is `{container, data, params, duration, partial, scope, period, gsap, presets}`. It returns a GSAP timeline of about `duration` seconds. It touches only `container`, and it receives the data for the scene's `requires` in the shape of the derived files (section 7.6). `partial` lists the datasets computed from incomplete data, so a renderer may label them. The build rewrites the single `export default` into a registry assignment and rejects `import` lines, because pages open from disk and browsers block module imports on `file://`.
 
 Initial types: `message`, `stats`, `bignumber` (one hero number with optional supporting figures), `headcount`, `curiosity`, and a media type for images and short video.

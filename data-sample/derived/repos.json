@@ -1,0 +1,91 @@
+{
+  "period": {
+    "since": "2026-01-01",
+    "until": "2026-12-31"
+  },
+  "scopes": {
+    "all": {
+      "touched": {
+        "total": 14,
+        "list": [
+          {
+            "name": "sample-api"
+          },
+          {
+            "name": "sample-web"
+          },
+          {
+            "name": "sample-docs"
+          },
+          {
+            "name": "sample-auth"
+          },
+          {
+            "name": "sample-billing"
+          },
+          {
+            "name": "sample-search"
+          },
+          {
+            "name": "sample-notifications"
+          },
+          {
+            "name": "sample-gateway"
+          },
+          {
+            "name": "sample-mobile"
+          },
+          {
+            "name": "sample-analytics"
+          },
+          {
+            "name": "sample-infra"
+          },
+          {
+            "name": "sample-cli"
+          },
+          {
+            "name": "sample-sdk"
+          },
+          {
+            "name": "sample-design-system"
+          }
+        ]
+      }
+    },
+    "group:alpha": {
+      "touched": {
+        "total": 9,
+        "list": [
+          {
+            "name": "sample-api"
+          },
+          {
+            "name": "sample-web"
+          },
+          {
+            "name": "sample-docs"
+          },
+          {
+            "name": "sample-auth"
+          },
+          {
+            "name": "sample-billing"
+          },
+          {
+            "name": "sample-search"
+          },
+          {
+            "name": "sample-notifications"
+          },
+          {
+            "name": "sample-gateway"
+          },
+          {
+            "name": "sample-mobile"
+          }
+        ]
+      }
+    }
+  }
+}

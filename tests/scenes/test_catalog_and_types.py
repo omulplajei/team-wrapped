@@ -9,6 +9,7 @@ def test_catalog_lists_planned_datasets(repo_root):
     names = load_catalog(repo_root / "docs" / "datasets.md")
     for expected in [
         "contributors",
+        "repos.touched",
         "summary.totals",
         "summary.activity_by_weekday",
         "summary.activity_by_hour",       # two names in one table cell

@@ -40,3 +40,13 @@ def test_resolve_ref():
     assert resolve_ref(datasets, "contributors.total") == 2
     assert resolve_ref(datasets, "summary.totals.nope") is None
     assert resolve_ref(datasets, "other.thing.value") is None
+
+
+def test_repos_touched_on_sample(sample_root):
+    d = DerivedData(sample_root)
+    everything = d.dataset("repos.touched", "all")
+    assert everything["total"] == 14
+    assert len(everything["list"]) == 14
+    assert everything["list"][0] == {"name": "sample-api"}
+    alpha = d.dataset("repos.touched", "group:alpha")
+    assert alpha["total"] == 9 and len(alpha["list"]) == 9
