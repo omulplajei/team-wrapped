@@ -102,21 +102,40 @@
   "groups": {
     "alpha": [
       "sample-api",
-      "sample-web",
-      "sample-docs",
       "sample-auth",
       "sample-billing",
-      "sample-search",
-      "sample-notifications",
+      "sample-docs",
       "sample-gateway",
-      "sample-mobile"
+      "sample-mobile",
+      "sample-notifications",
+      "sample-search",
+      "sample-web"
     ],
     "beta": [
       "sample-analytics",
-      "sample-infra",
       "sample-cli",
+      "sample-design-system",
+      "sample-infra",
+      "sample-sdk"
+    ],
+    "gamma": [
+      "sample-web",
+      "sample-mobile"
+    ],
+    "delta": [
       "sample-sdk",
+      "sample-cli"
+    ],
+    "epsilon": [
+      "sample-docs",
       "sample-design-system"
+    ],
+    "zeta": [
+      "sample-infra",
+      "sample-gateway"
+    ],
+    "eta": [
+      "sample-search"
     ]
   }
 }

@@ -68,6 +68,7 @@ team-wrapped/
 | `org` | GitHub org or owner |
 | `repos` | list of repo names |
 | `groups` | optional map of group name to repo names. Enables capability statistics |
+| `group_info` | optional map of group name to `{label, category}`. `label` is the display name (default: the group name); `category` is `core`, `extension` or `support` (default: none, drawn neutral). Keys must be configured groups; unknown fields are rejected |
 | `since`, `until` | optional window; default is full history |
 | `metrics` | enabled metrics, for example `[commits, pull_requests, reviews, comments]` |
 | `commit_branches` | `default` (default) or `all` |
@@ -113,7 +114,7 @@ Keys and repeated records. Files are append-only (section 10), so a file may hol
 
 ### 5.2 Aggregator v1 scope
 
-`aggregate` produces what the shipped scenes read: `summary.totals`, `delivery_volume.lines`, the curiosity datasets listed in `docs/datasets.md`, `contributors`, `repos.touched`, and `meta.json`. Scopes are `all` and `group:<name>`; `repo:<name>` scopes, time buckets and `review_collab` are deferred until a scene needs them. All statistics respect the configured window (`since`/`until`, inclusive, evaluated in the configured `timezone`) and `metrics`.
+`aggregate` produces what the shipped scenes read: `summary.totals`, `delivery_volume.lines`, the curiosity datasets listed in `docs/datasets.md`, `contributors`, `repos.touched`, and `meta.json`. Scopes are `all` and `group:<name>` (plus `commit_flow`, which has only `all`); `repo:<name>` scopes, time buckets and `review_collab` are deferred until a scene needs them. All statistics respect the configured window (`since`/`until`, inclusive, evaluated in the configured `timezone`) and `metrics`.
 
 ### Metric plugin interface
 
@@ -201,8 +202,8 @@ Not a separate family. Where `groups` is configured, every statistic above is al
 }
 ```
 
-- **Files.** `summary.json`, `delivery_volume.json`, `review_collab.json`, `curiosities.json`, `contributors.json` and `repos.json`, plus `meta.json` (section 9).
-- **Scopes.** Keys are `all`, `group:<name>` and `repo:<name>`. `group:*` keys exist only when groups are configured. Every file has the same scope keys.
+- **Files.** `summary.json`, `delivery_volume.json`, `review_collab.json`, `curiosities.json`, `commit_flow.json` (section 7.7), `contributors.json` and `repos.json`, plus `meta.json` (section 9).
+- **Scopes.** Keys are `all`, `group:<name>` and `repo:<name>`. `group:*` keys exist only when groups are configured. Every file has the same scope keys, except families that define only `all` (`commit_flow`).
 - **Dataset names.** A dataset name `family.name` (for example `delivery_volume.lines`) resolves to `<family>.json`, then `scopes[<scope>][name]`. The `contributors` dataset has no second part, so it resolves to `scopes[<scope>]` itself.
 - **Field paths.** A field such as `total_net` is a key of the dataset object. A path such as `list.kind` means the key `kind` on the items of the list `list`. A field that is absent on some items (for example `list.login` on unlinked contributors) counts as present if any item has it.
 - **Time-bucketed datasets.** These hold one series per bucket size, keyed `day`, `week`, `month`, `quarter` or `year`. Each series is a list of `{"start": "<date>", ...fields}` entries ordered by `start`. The sample data does not exercise this shape yet, so it will be confirmed by the first scene that needs a time series.
@@ -212,6 +213,10 @@ Not a separate family. Where `groups` is configured, every statistic above is al
 - **Privacy.** Derived files never contain author emails (section 6).
 - **Metadata.** `meta.json` has no `scopes`. It holds `generated_at`, `period`, per-repo and per-metric `status`, `enrichment_coverage`, `partial_datasets` and the resolved `groups`.
 - **Partial datasets.** A dataset named in `meta.json`'s `partial_datasets` was computed from incomplete data. Scenes that set `allow_partial: false` treat it as unsupported.
+
+### 7.7 Commit flow
+
+`commit_flow.json` feeds the scene that drops one year of commits, as blocks sized by lines changed, into one hexagon per capability. Scope `all` only; the datasets are `groups` (a list with one record per configured group, in config order: `name`, `label`, `category` when set, `total`, and `commits` as `[day, lines]` pairs) and `window` (`days`, `start`). `day` counts whole local calendar days in the configured timezone since the window start; `lines` is additions plus deletions, 0 for an unenriched commit. Merge commits and commits outside the window are skipped, a repository in several groups counts in each, and commits are ordered by day, authored timestamp, then sha so output is deterministic. The window needs both `since` and `until`; without them (or without groups) the family is written empty and scenes that require it fail validation or are skipped. The dataset is partial when an in-scope non-merge commit is not enriched or a grouped repository's commits status is not complete. The file holds no author, message or hash. The writer prints each pair on its own line to keep a year of commits small.
 
 ## 8. Collection and multi-pass behaviour
 

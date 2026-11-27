@@ -47,7 +47,7 @@ def test_cli_derive_repos(repo_root, sample_root, tmp_path, capsys):
     (data / "derived" / "repos.json").unlink()
     code = main(["derive-repos", "--root", str(repo_root), "--data", str(data)])
     assert code == 0
-    assert "14 repositories, 2 groups" in capsys.readouterr().out
+    assert "14 repositories, 7 groups" in capsys.readouterr().out
     assert (data / "derived" / "repos.json").is_file()
 
 

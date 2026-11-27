@@ -38,6 +38,16 @@ Metric: any. Not time-bucketed. A repository is "touched" when it has at least o
 
 `lines` totals sum the enriched non-merge commits authored inside the window; merge commits are skipped because they repeat the lines of the commits they merge. Enriched means the record has `enriched: true` (the boolean) and whole-number `additions` and `deletions`. The dataset is omitted when no non-merge commit in scope is enriched, and partial when any in-window non-merge commit in scope is not.
 
+## commit_flow
+Metric: commits. Scope `all` only (there are no `group:` or `repo:` scopes: the dataset already holds one record per group). Not time-bucketed. One year of commits as blocks, per capability (a configured group of repos).
+
+| Dataset | Fields |
+|---|---|
+| `commit_flow.groups` | a **list**, one record per configured group in config order: `name`, `label`, `category` (`core`, `extension` or `support`; absent when `group_info` sets none), `total` (commit count), `commits` (list of `[day, lines]` pairs) |
+| `commit_flow.window` | `days` (length of the window in days), `start` (YYYY-MM-DD) |
+
+`day` is the number of whole local calendar days (configured timezone) from the window `start`, 0-based, so the last day is `days - 1`. `lines` is additions + deletions of the commit, or 0 when the commit is not enriched. Only non-merge commits of the group's repositories count, by author date and inside the window; a repository in several groups counts in each. `commits` is ordered by day, then authored timestamp, then sha. A group without qualifying commits is still listed with `total` 0 and empty `commits`. `label` is the group name unless `group_info` sets one. The dataset needs `since` and `until` in the config (or `aggregate --since/--until`) and at least one group; otherwise it is omitted. It is partial when any in-window non-merge commit of a grouped repository is not enriched, or the commits status of any grouped repository is not complete. Privacy: no author, message or hash is written, only the day and the size. A scene reads it with scope `all`.
+
 ## review_collab
 | Dataset | Fields | Metric |
 |---|---|---|

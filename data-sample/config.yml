@@ -36,6 +36,19 @@ groups:
     - sample-design-system
     - sample-infra
     - sample-sdk
+  gamma: [sample-web, sample-mobile]
+  delta: [sample-sdk, sample-cli]
+  epsilon: [sample-docs, sample-design-system]
+  zeta: [sample-infra, sample-gateway]
+  eta: [sample-search]
+group_info:                       # optional; label defaults to the group name, category to none (drawn neutral)
+  alpha: {label: Core Alpha, category: core}
+  beta: {label: Core Beta, category: core}
+  gamma: {label: Extension Gamma, category: extension}
+  delta: {label: Extension Delta, category: extension}
+  epsilon: {label: Support Epsilon, category: support}
+  zeta: {label: Support Zeta, category: support}
+  eta: {label: Eta Labs}          # no category
 # Optional keys (defaults shown):
 # metrics: [commits, pull_requests, reviews, comments]
 # commit_branches: default        # `collect` supports the default branch only; `all` is rejected for now
@@ -44,3 +57,4 @@ groups:
 # aliases: {old-login: new-login}
 # curiosities: {top_n: 5}
 # avatars: {download: true}
+# group_info.<group>: {label: "Display name", category: core | extension | support}

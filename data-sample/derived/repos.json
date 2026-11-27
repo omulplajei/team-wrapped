@@ -109,6 +109,68 @@
           }
         ]
       }
+    },
+    "group:gamma": {
+      "touched": {
+        "total": 2,
+        "list": [
+          {
+            "name": "sample-mobile"
+          },
+          {
+            "name": "sample-web"
+          }
+        ]
+      }
+    },
+    "group:delta": {
+      "touched": {
+        "total": 2,
+        "list": [
+          {
+            "name": "sample-cli"
+          },
+          {
+            "name": "sample-sdk"
+          }
+        ]
+      }
+    },
+    "group:epsilon": {
+      "touched": {
+        "total": 2,
+        "list": [
+          {
+            "name": "sample-design-system"
+          },
+          {
+            "name": "sample-docs"
+          }
+        ]
+      }
+    },
+    "group:zeta": {
+      "touched": {
+        "total": 2,
+        "list": [
+          {
+            "name": "sample-gateway"
+          },
+          {
+            "name": "sample-infra"
+          }
+        ]
+      }
+    },
+    "group:eta": {
+      "touched": {
+        "total": 1,
+        "list": [
+          {
+            "name": "sample-search"
+          }
+        ]
+      }
     }
   }
 }

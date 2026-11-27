@@ -2,6 +2,7 @@ import json
 import shutil
 from pathlib import Path
 
+from team_wrapped.scenes.catalog import load_catalog
 from team_wrapped.scenes.derived import DerivedData
 from team_wrapped.scenes.loader import Entry, Scene, Script
 from team_wrapped.scenes.scene_types import SceneType
@@ -292,3 +293,20 @@ def test_commit_flow_first_group_needs_its_fields(tmp_path):
     result = _flow_run(tmp_path, dict(GOOD_FLOW, groups=[{"name": "alpha"}]))
     assert "groups 'commit_flow.groups': first group is missing field 'commits'" in result.problems
     assert "groups 'commit_flow.groups' must contain objects" in _flow_run(tmp_path, dict(GOOD_FLOW, groups=[1])).problems
+
+
+def test_sample_commit_flow_validates_and_matches_the_sample_config(repo_root, sample_root):
+    from team_wrapped.config import load_config
+    config = load_config(sample_root / "config.yml")
+    derived = DerivedData(sample_root)
+    scene = Scene(id="s", type="flow", title="S", requires=FLOW_REQ, params=FLOW_PARAMS)
+    script = Script(id="x", title="X", period=2026, scope="all", scenes=[Entry(scene="s")])
+    catalog = load_catalog(repo_root / "docs" / "datasets.md")
+    assert validate_script(script, {"s": scene}, derived, catalog, FLOW_TYPES).results[0].status == "supported"
+    groups = derived.dataset("commit_flow.groups", "all")
+    window = derived.dataset("commit_flow.window", "all")
+    assert [g["name"] for g in groups] == list(config.groups)
+    assert [g.get("category") for g in groups] == [config.group_info[g["name"]]["category"] for g in groups]
+    assert all(g["total"] == len(g["commits"]) and g["commits"] == sorted(g["commits"], key=lambda c: c[0]) for g in groups)
+    assert all(0 <= day < window["days"] and lines >= 0 for g in groups for day, lines in g["commits"])
+    assert "commit_flow.groups" not in derived.partial_datasets()
