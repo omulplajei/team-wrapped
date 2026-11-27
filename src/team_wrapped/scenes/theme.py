@@ -123,12 +123,20 @@ def load_theme(name: str, roots) -> Theme:
     if isinstance(opacity, bool) or not isinstance(opacity, (int, float)) or not 0 <= opacity <= 1:
         raise LoadError(f"{found / 'theme.yml'}: backdrop opacity must be a number between 0 and 1")
 
+    backdrop_images = [_asset(found, v, "backdrop image") for v in images]
+    by_name: dict = {}
+    for path in dict.fromkeys(([logo] if logo else []) + backdrop_images):
+        by_name.setdefault(path.name.casefold(), []).append(path.name)
+    names = [n for group in by_name.values() if len(group) > 1 for n in group]
+    if names:
+        raise LoadError(f"{found / 'theme.yml'}: assets with the same file name: {sorted(names)}")
+
     return Theme(
         name=name,
         colors=colors,
         font=font,
         logo=logo,
-        backdrop_images=[_asset(found, v, "backdrop image") for v in images],
+        backdrop_images=backdrop_images,
         backdrop_opacity=float(opacity),
         dir=found,
     )

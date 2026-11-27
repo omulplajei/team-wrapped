@@ -176,3 +176,28 @@ def test_symlink_escaping_the_theme_folder_is_rejected(tmp_path):
         pytest.skip("symlinks not supported")
     with pytest.raises(LoadError, match="inside the theme folder"):
         load_theme("brand", [tmp_path])
+
+
+def test_same_file_name_in_different_folders_is_rejected(tmp_path):
+    folder = make_theme(tmp_path, yml="logo: assets/logo.png\nbackdrop:\n  images: [assets/bg/logo.png]\n",
+                        files=("logo.png",))
+    (folder / "assets" / "bg").mkdir()
+    (folder / "assets" / "bg" / "logo.png").write_bytes(b"other")
+    with pytest.raises(LoadError, match="same file name"):
+        load_theme("brand", [tmp_path])
+
+
+def test_same_file_name_differing_by_case_is_rejected(tmp_path):
+    folder = make_theme(tmp_path, yml="logo: assets/a/Logo.png\nbackdrop:\n  images: [assets/b/logo.png]\n",
+                        files=())
+    for sub, name in (("a", "Logo.png"), ("b", "logo.png")):
+        (folder / "assets" / sub).mkdir()
+        (folder / "assets" / sub / name).write_bytes(sub.encode())
+    with pytest.raises(LoadError, match="same file name"):
+        load_theme("brand", [tmp_path])
+
+
+def test_logo_reused_as_a_backdrop_image_is_allowed(tmp_path):
+    make_theme(tmp_path, yml="logo: assets/logo.png\nbackdrop:\n  images: [assets/logo.png]\n")
+    theme = load_theme("brand", [tmp_path])
+    assert theme.backdrop_images == [theme.logo]

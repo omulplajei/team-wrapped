@@ -156,7 +156,7 @@ def build(script_id: str, repo_root, data_root, out_root, theme: str | None = No
 
     chosen = load_theme(theme or resolved.script.theme or "default",
                         [repo_root, repo_root / "data", data_root])
-    theme_files = ([chosen.logo] if chosen.logo else []) + list(chosen.backdrop_images)
+    theme_files = list(dict.fromkeys(([chosen.logo] if chosen.logo else []) + list(chosen.backdrop_images)))
     page_path = {path: "assets/theme/" + urllib.parse.quote(path.name) for path in theme_files}
 
     payload, skipped = _payload(resolved)

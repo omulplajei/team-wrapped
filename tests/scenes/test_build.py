@@ -438,3 +438,12 @@ def test_cli_build_theme_option(repo_root, sample_root, tmp_path, capsys):
     assert main(["build", "year-wrapped", "--root", str(repo_root), "--data", str(data),
                  "--out", str(tmp_path / "dist"), "--theme", "nope"]) == 2
     assert "theme 'nope' not found" in capsys.readouterr().err
+
+
+def test_logo_reused_as_the_only_backdrop_image_is_copied_once(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    add_theme(data, yml="logo: assets/logo.png\nbackdrop:\n  images: [assets/logo.png]\n")
+    result = build("year-wrapped", repo_root, data, tmp_path / "dist", theme="brand")
+    assert [p.name for p in (result.out_dir / "assets" / "theme").iterdir()] == ["logo.png"]
+    theme = read_payload(result.index)["script"]["theme"]
+    assert theme["backdrop"]["images"] == ["assets/theme/logo.png"]
