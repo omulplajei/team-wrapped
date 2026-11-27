@@ -1,6 +1,6 @@
-# Opening scene: headline totals for the script's period and scope.
+# Recap scene: headline totals for the script's period and scope, under a title.
 id: year-in-numbers
-title: The year in numbers
+title: Year in numbers
 type: stats
 requires:
   - dataset: summary.totals
@@ -10,6 +10,7 @@ requires:
     fields: [total_additions, total_deletions, total_net]
     allow_partial: true   # needs enriched commit records
 params:
+  heading: "Year in numbers"
   items:
     - {label: "Commits", value: summary.totals.commits}
     - {label: "Merged pull requests", value: summary.totals.merged_prs}
