@@ -9,13 +9,40 @@ Status: the scene, validation and player layers work on the sample data. The col
 ```bash
 pip install pyyaml pytest
 PYTHONPATH=src python3 -m team_wrapped validate-script year-wrapped --data data-sample
-PYTHONPATH=src python3 -m team_wrapped build year-wrapped --data data-sample
+./build.sh year-wrapped --data data-sample
 ```
 Then open `dist/year-wrapped/index.html` in a browser. If your browser or tool blocks local files from loading their scripts, serve the folder instead:
 
 ```bash
 python3 -m http.server 8000 --directory dist/year-wrapped
 ```
+
+## Building a page
+
+The player is one static HTML page. It does not read your data or theme while it plays, so it has to be **built** from them: `build` checks the script against the data, embeds only the data each scene needs, copies the theme's assets and writes `dist/<script>/index.html`. Rebuild after changing data, scenes, scripts or a theme.
+
+`build.sh` is a short wrapper around the build command that works from any folder:
+
+```bash
+./build.sh [SCRIPT_ID] [OPTIONS]
+```
+
+| Part | Meaning | Default |
+|---|---|---|
+| `SCRIPT_ID` | Script to build, from `scripts/` or `data/scripts/` | `year-wrapped` |
+| `--data FOLDER` | Data folder under the repo root (`data` for your private data, `data-sample` for the demo data) | `data` |
+| `--theme NAME` | Theme to apply (see Themes below) | the script's `theme:`, else the built-in look |
+| `--out FOLDER` | Output folder under the repo root | `dist` |
+
+Examples:
+
+```bash
+./build.sh                                          # year-wrapped from data/ with the built-in look
+./build.sh year-wrapped --data data-sample          # demo data
+./build.sh year-wrapped --data data --theme my-brand
+```
+
+It prints the page path when it is done, and stops with a message (exit code 1 or 2) if a scene cannot be supported by the data or a theme is invalid; nothing is written in that case. A page built from `data/` contains real data: do not publish `dist/` (it is git-ignored). The script needs Python 3.11+ and PyYAML (`pip install pyyaml`); without `build.sh` the same thing is `PYTHONPATH=src python3 -m team_wrapped build ...`.
 
 ## Layout
 
