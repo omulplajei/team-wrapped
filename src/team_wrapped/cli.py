@@ -20,7 +20,7 @@ def _cmd_validate(args) -> int:
 def _cmd_build(args) -> int:
     root = Path(args.root)
     try:
-        result = build(args.script, root, root / args.data, root / args.out)
+        result = build(args.script, root, root / args.data, root / args.out, theme=args.theme)
     except BuildError as error:
         print(f"error: {error}", file=sys.stderr)
         if error.report is not None:
@@ -45,6 +45,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--data", default="data", help="data folder under the root (data or data-sample)")
         if name == "build":
             p.add_argument("--out", default="dist", help="output folder under the root (default: dist)")
+            p.add_argument("--theme", default=None, help="theme name")
     args = parser.parse_args(argv)
     try:
         if args.command == "validate-script":

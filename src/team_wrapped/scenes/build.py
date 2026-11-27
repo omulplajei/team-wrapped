@@ -9,6 +9,7 @@ import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .theme import css_overrides, load_theme
 from .validate import Report, Resolved, resolve_and_validate
 
 # (folder under web/, file name) copied next to the page in assets/
@@ -142,7 +143,7 @@ def _embed_json(payload: dict) -> str:
     return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
-def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
+def build(script_id: str, repo_root, data_root, out_root, theme: str | None = None) -> BuildResult:
     repo_root, data_root, out_root = Path(repo_root), Path(data_root), Path(out_root)
     resolved = resolve_and_validate(script_id, repo_root, data_root)
     if not resolved.report.ok:
@@ -153,9 +154,21 @@ def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
     if not (vendor / "gsap.min.js").is_file():
         raise BuildError(f"{vendor / 'gsap.min.js'} is missing; vendor GSAP first")
 
+    chosen = load_theme(theme or resolved.script.theme or "default",
+                        [repo_root, repo_root / "data", data_root])
+    theme_files = ([chosen.logo] if chosen.logo else []) + list(chosen.backdrop_images)
+    page_path = {path: "assets/theme/" + urllib.parse.quote(path.name) for path in theme_files}
+
     payload, skipped = _payload(resolved)
     if not payload["scenes"]:
         raise BuildError("no scenes left to play after skipping unsupported ones")
+
+    if chosen.backdrop_images:
+        payload["script"]["theme"] = {"backdrop": {
+            "images": [page_path[path] for path in chosen.backdrop_images],
+            "opacity": chosen.backdrop_opacity}}
+    else:
+        payload["script"]["theme"] = None
 
     payload["script"]["music"], music_file = _prepare_music(resolved.script.music, data_root)
 
@@ -169,7 +182,11 @@ def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
     data_tag = '<script type="application/json" id="tw-data">' + _embed_json(payload) + "</script>"
     renderer_tag = ("<script>\nwindow.TeamWrapped = window.TeamWrapped || {};\n"
                     "TeamWrapped.sceneTypes = {};\n" + renderers + "\n</script>")
+    overrides = css_overrides(chosen)
+    logo_tag = ('<img class="tw-logo" src="' + page_path[chosen.logo] + '" alt="">') if chosen.logo else ""
     replacements = {
+        "<!--TW_THEME-->": ('<style id="tw-theme">' + overrides + "</style>") if overrides else "",
+        "<!--TW_LOGO-->": logo_tag,
         "{{TITLE}}": html.escape(resolved.script.title),
         "<!--TW_DATA-->": data_tag,
         "<!--TW_RENDERERS-->": renderer_tag,
@@ -197,6 +214,10 @@ def build(script_id: str, repo_root, data_root, out_root) -> BuildResult:
         target = out_dir / ref
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
+    if theme_files:
+        (out_dir / "assets" / "theme").mkdir()
+        for path in theme_files:
+            shutil.copy2(path, out_dir / "assets" / "theme" / path.name)
     index = out_dir / "index.html"
     index.write_text(page)
     return BuildResult(out_dir=out_dir, index=index, skipped=skipped)

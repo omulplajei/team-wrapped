@@ -7,7 +7,7 @@ import pytest
 
 from team_wrapped.cli import main
 from team_wrapped.scenes.build import BuildError, build, transform_renderer
-from team_wrapped.scenes.loader import load_script
+from team_wrapped.scenes.loader import LoadError, load_script
 
 
 def read_payload(index):
@@ -358,3 +358,83 @@ def test_repos_scene_only_shows_the_scope_repositories(repo_root, sample_root, t
     html = result.index.read_text()
     assert "sample-api" in html
     assert "sample-analytics" not in html
+
+
+THEME_YML = """
+colors:
+  background: "#252f38"
+  accent: "#009cde"
+font: '"Effra", system-ui, sans-serif'
+logo: assets/logo.png
+backdrop:
+  images: [assets/bg 1.png, assets/bg2.png]
+  opacity: 0.4
+"""
+
+
+def add_theme(data, yml=THEME_YML):
+    folder = data / "themes" / "brand"
+    (folder / "assets").mkdir(parents=True)
+    (folder / "theme.yml").write_text(yml)
+    for name in ("logo.png", "bg 1.png", "bg2.png"):
+        (folder / "assets" / name).write_bytes(b"png")
+
+
+def test_default_build_has_no_theme_output(repo_root, sample_root, tmp_path):
+    result = build("year-wrapped", repo_root, sample_root, tmp_path / "dist")
+    html = result.index.read_text()
+    assert 'id="tw-theme"' not in html and "tw-logo" not in html and "<!--TW_" not in html
+    assert not (result.out_dir / "assets" / "theme").exists()
+    assert read_payload(result.index)["script"]["theme"] is None
+    assert 'id="tw-backdrop"' in html
+
+
+def test_theme_is_applied_to_the_page(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    add_theme(data)
+    result = build("year-wrapped", repo_root, data, tmp_path / "dist", theme="brand")
+    html = result.index.read_text()
+    assert '<style id="tw-theme">:root {' in html
+    assert "--tw-bg: #252f38;" in html and "--tw-accent: #009cde;" in html
+    assert '--tw-font: "Effra", system-ui, sans-serif;' in html
+    assert html.count('<img class="tw-logo"') == 2            # start and end screens
+    assert 'src="assets/theme/logo.png"' in html
+    for name in ("logo.png", "bg 1.png", "bg2.png"):
+        assert (result.out_dir / "assets" / "theme" / name).is_file()
+    theme = read_payload(result.index)["script"]["theme"]
+    assert theme == {"backdrop": {"images": ["assets/theme/bg%201.png", "assets/theme/bg2.png"], "opacity": 0.4}}
+
+
+def test_script_theme_key_selects_the_theme(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    add_theme(data)
+    (data / "scripts").mkdir()
+    (data / "scripts" / "branded.yml").write_text(
+        "id: branded\ntheme: brand\nscope: all\nscenes:\n  - scene: how-many-of-us\n")
+    result = build("branded", repo_root, data, tmp_path / "dist")
+    assert "--tw-bg: #252f38;" in result.index.read_text()
+    # an explicit argument wins over the script's key
+    other = build("branded", repo_root, data, tmp_path / "dist2", theme="default")
+    assert 'id="tw-theme"' not in other.index.read_text()
+
+
+def test_bad_or_unknown_theme_writes_nothing(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    add_theme(data, yml='colors:\n  accent: "red; } body { display: none"\n')
+    with pytest.raises(LoadError, match="invalid value"):
+        build("year-wrapped", repo_root, data, tmp_path / "dist", theme="brand")
+    with pytest.raises(LoadError, match="theme 'nope' not found"):
+        build("year-wrapped", repo_root, data, tmp_path / "dist", theme="nope")
+    assert not (tmp_path / "dist").exists()
+
+
+def test_cli_build_theme_option(repo_root, sample_root, tmp_path, capsys):
+    data = sample_copy(sample_root, tmp_path)
+    add_theme(data)
+    code = main(["build", "year-wrapped", "--root", str(repo_root), "--data", str(data),
+                 "--out", str(tmp_path / "dist"), "--theme", "brand"])
+    assert code == 0
+    assert "--tw-bg: #252f38;" in (tmp_path / "dist" / "year-wrapped" / "index.html").read_text()
+    assert main(["build", "year-wrapped", "--root", str(repo_root), "--data", str(data),
+                 "--out", str(tmp_path / "dist"), "--theme", "nope"]) == 2
+    assert "theme 'nope' not found" in capsys.readouterr().err
