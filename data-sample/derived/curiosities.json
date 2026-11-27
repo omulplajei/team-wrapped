@@ -1,0 +1,55 @@
+{
+  "period": {"since": "2026-01-01", "until": "2026-12-31"},
+  "scopes": {
+    "all": {
+      "longest_comment_chain": [
+        {"value": 23, "repo": "sample-api", "pr_number": 482},
+        {"value": 19, "repo": "sample-web", "pr_number": 1203},
+        {"value": 14, "repo": "sample-auth", "pr_number": 655}
+      ],
+      "most_commented_pr": [
+        {"value": 64, "repo": "sample-api", "pr_number": 482},
+        {"value": 51, "repo": "sample-web", "pr_number": 1203}
+      ],
+      "most_commits_pr": [
+        {"value": 64, "repo": "sample-web", "pr_number": 910},
+        {"value": 48, "repo": "sample-api", "pr_number": 482}
+      ],
+      "most_lines_deleted_pr": [
+        {"value": 8120, "repo": "sample-infra", "pr_number": 377},
+        {"value": 5400, "repo": "sample-web", "pr_number": 910}
+      ],
+      "most_reviewed_pr": [
+        {"value": 31, "repo": "sample-auth", "pr_number": 655},
+        {"value": 27, "repo": "sample-api", "pr_number": 482}
+      ],
+      "busiest_day": [
+        {"value": 87, "date": "2026-03-14", "merged_prs": 12},
+        {"value": 74, "date": "2026-10-02", "merged_prs": 9}
+      ],
+      "busiest_month": [
+        {"value": 412, "month": "2026-03", "merged_prs": 38},
+        {"value": 390, "month": "2026-10", "merged_prs": 33}
+      ],
+      "longest_commit_streak": [
+        {"value": 19, "from": "2026-03-02", "to": "2026-03-20"},
+        {"value": 14, "from": "2026-09-07", "to": "2026-09-20"}
+      ],
+      "longest_merge_streak": [
+        {"value": 11, "from": "2026-06-01", "to": "2026-06-11"},
+        {"value": 8, "from": "2026-10-05", "to": "2026-10-12"}
+      ]
+    },
+    "group:alpha": {
+      "longest_comment_chain": [{"value": 23, "repo": "sample-api", "pr_number": 482}],
+      "most_commented_pr": [{"value": 64, "repo": "sample-api", "pr_number": 482}],
+      "most_commits_pr": [{"value": 48, "repo": "sample-api", "pr_number": 482}],
+      "most_lines_deleted_pr": [{"value": 5400, "repo": "sample-web", "pr_number": 910}],
+      "most_reviewed_pr": [{"value": 31, "repo": "sample-auth", "pr_number": 655}],
+      "busiest_day": [{"value": 61, "date": "2026-03-14", "merged_prs": 8}],
+      "busiest_month": [{"value": 280, "month": "2026-03", "merged_prs": 25}],
+      "longest_commit_streak": [{"value": 15, "from": "2026-03-02", "to": "2026-03-16"}],
+      "longest_merge_streak": [{"value": 9, "from": "2026-06-01", "to": "2026-06-09"}]
+    }
+  }
+}

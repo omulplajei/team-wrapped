@@ -53,20 +53,24 @@ Metric: any. Not time-bucketed. A repository is "touched" when it has at least o
 | `summary.activity_by_weekday`, `summary.activity_by_hour` | counts in the configured timezone |
 
 ## curiosities
-Each holds the top N records: `value`, `repo`, and a `pr_number` or `sha`. Not time-bucketed, but limited to the scope and window.
+Each dataset is a **list** of up to N records, best first (`value`, plus the fields named below). Not time-bucketed, but limited to the scope and window. Scenes show the first record. Records never carry people or PR titles.
 
-| Dataset | Value | Metric | Enriched |
+| Dataset | Record fields | Metric | Enriched |
 |---|---|---|---|
-| `curiosities.longest_comment_chain` | comments in the longest code-review thread | comments | no |
-| `curiosities.most_commented_pr` | comments on one PR, both kinds | comments | no |
-| `curiosities.most_commits_pr` | commits in one PR | pull_requests | yes |
-| `curiosities.most_files_pr` | files changed in one PR | pull_requests | yes |
-| `curiosities.biggest_pr_by_lines` | additions + deletions | pull_requests | yes |
-| `curiosities.most_reviewed_pr` | reviews on one PR | reviews | no |
-| `curiosities.longest_lived_pr` | days from created to merged or closed | pull_requests | no |
-| `curiosities.most_review_rounds_pr` | rounds on one PR | reviews | yes |
-| `curiosities.biggest_commit` | lines and files in one commit | commits | yes |
-| `curiosities.busiest_day` | commits and merged PRs on one day | commits, pull_requests | no |
+| `curiosities.longest_comment_chain` | `value` (comments in the longest code-review thread), `repo`, `pr_number` | comments | no |
+| `curiosities.most_commented_pr` | `value` (comments on one PR, both kinds), `repo`, `pr_number` | comments | no |
+| `curiosities.most_commits_pr` | `value` (commits in one PR), `repo`, `pr_number` | pull_requests | yes |
+| `curiosities.most_files_pr` | `value` (files changed in one PR), `repo`, `pr_number` | pull_requests | yes |
+| `curiosities.biggest_pr_by_lines` | `value` (additions + deletions), `repo`, `pr_number` | pull_requests | yes |
+| `curiosities.most_lines_deleted_pr` | `value` (lines deleted in one PR), `repo`, `pr_number` | pull_requests | yes |
+| `curiosities.most_reviewed_pr` | `value` (reviews on one PR), `repo`, `pr_number` | reviews | no |
+| `curiosities.longest_lived_pr` | `value` (days from created to merged or closed), `repo`, `pr_number` | pull_requests | no |
+| `curiosities.most_review_rounds_pr` | `value` (rounds on one PR), `repo`, `pr_number` | reviews | yes |
+| `curiosities.biggest_commit` | `value` (lines in one commit), `repo`, `sha`, `files` | commits | yes |
+| `curiosities.busiest_day` | `value` (commits that day), `date` (YYYY-MM-DD), `merged_prs` | commits, pull_requests | no |
+| `curiosities.busiest_month` | `value` (commits that month), `month` (YYYY-MM), `merged_prs` | commits, pull_requests | no |
+| `curiosities.longest_commit_streak` | `value` (consecutive days with a commit), `from`, `to` (YYYY-MM-DD) | commits | no |
+| `curiosities.longest_merge_streak` | `value` (consecutive days with a merged PR), `from`, `to` (YYYY-MM-DD) | pull_requests | no |
 
 ## meta
 Always available. See spec section 9.

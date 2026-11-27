@@ -16,6 +16,15 @@ def test_catalog_lists_planned_datasets(repo_root):
         "delivery_volume.lines",
         "review_collab.outcome_mix",
         "curiosities.biggest_pr_by_lines",
+        "curiosities.busiest_day",
+        "curiosities.busiest_month",
+        "curiosities.longest_commit_streak",
+        "curiosities.longest_merge_streak",
+        "curiosities.most_lines_deleted_pr",
+        "curiosities.longest_comment_chain",
+        "curiosities.most_reviewed_pr",
+        "curiosities.most_commented_pr",
+        "curiosities.most_commits_pr",
     ]:
         assert expected in names
     assert "nope.nothing" not in names

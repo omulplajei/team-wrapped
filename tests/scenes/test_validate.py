@@ -11,8 +11,9 @@ TYPES = {
     "bignumber": SceneType("bignumber", 6.0, ["value", "label"], Path(".")),
     "repogrid": SceneType("repogrid", 8.0, ["heading", "value", "names"], Path(".")),
     "sequence": SceneType("sequence", 6.0, ["heading", "steps"], Path(".")),
+    "curiosity": SceneType("curiosity", 6.0, ["teaser", "records", "unit"], Path(".")),
 }
-CATALOG = {"summary.totals", "contributors", "repos.touched"}
+CATALOG = {"summary.totals", "contributors", "repos.touched", "curiosities.busiest_day"}
 
 
 def make_data(tmp_path, partial=()):
@@ -22,6 +23,8 @@ def make_data(tmp_path, partial=()):
         {"scopes": {"all": {"totals": {"commits": 5}}}}))
     (d / "repos.json").write_text(json.dumps(
         {"scopes": {"all": {"touched": {"total": 2, "list": [{"name": "a"}, {"name": "b"}]}}}}))
+    (d / "curiosities.json").write_text(json.dumps(
+        {"scopes": {"all": {"busiest_day": [{"value": 87, "date": "2026-03-14", "merged_prs": 12}]}}}))
     (d / "meta.json").write_text(json.dumps({"partial_datasets": list(partial)}))
     return DerivedData(tmp_path)
 
@@ -185,3 +188,18 @@ def test_sequence_steps_values_are_checked(tmp_path):
     not_a_number = {"heading": "H", "steps": [{"value": "summary.totals", "label": "X"}]}
     report = run(tmp_path / "c", REQ, params=not_a_number, type_="sequence")
     assert "value 'summary.totals' is not a number" in report.results[0].problems
+
+
+CUR_REQ = [{"dataset": "curiosities.busiest_day", "fields": ["value", "date"]}]
+
+
+def test_curiosity_records_must_resolve_to_a_list(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    (tmp_path / "c").mkdir()
+    ok = {"teaser": "T", "records": "curiosities.busiest_day", "unit": "commits"}
+    assert run(tmp_path / "a", CUR_REQ, params=ok, type_="curiosity").results[0].status == "supported"
+    report = run(tmp_path / "b", CUR_REQ, params=dict(ok, records="curiosities.busiest_day.value"), type_="curiosity")
+    assert "records 'curiosities.busiest_day.value' does not resolve to a list" in report.results[0].problems
+    report = run(tmp_path / "c", CUR_REQ, params=dict(ok, records="curiosities.nope"), type_="curiosity")
+    assert "records 'curiosities.nope' does not resolve to a list" in report.results[0].problems
