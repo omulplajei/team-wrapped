@@ -6,6 +6,7 @@ from aggregate_helpers import commit, pull_request, review
 from team_wrapped import aggregate as agg
 from team_wrapped.cli import main
 
+FAMILY_FILES = ["contributors.json", "repos.json", "summary.json", "delivery_volume.json", "curiosities.json"]
 CONFIG = """org: sample-org
 repos: [alpha-api, beta-web]
 groups:
@@ -24,10 +25,10 @@ def populate(fx):
     fx.status("alpha-api", {"commits": "complete", "pull_requests": "complete", "reviews": "complete", "comments": "complete"})
 
 
-def test_aggregate_writes_all_part_one_files(fx):
+def test_aggregate_writes_every_family(fx):
     populate(fx)
     written = agg.aggregate(fx.root, now=datetime.datetime(2026, 12, 31, 23, tzinfo=datetime.timezone.utc))
-    assert [p.name for p in written] == ["contributors.json", "repos.json", "meta.json"]
+    assert [p.name for p in written] == FAMILY_FILES + ["meta.json"]
     derived = fx.root / "derived"
     contributors = json.loads((derived / "contributors.json").read_text())
     assert list(contributors["scopes"]) == ["all", "group:alpha"]
@@ -38,7 +39,8 @@ def test_aggregate_writes_all_part_one_files(fx):
     assert repos["scopes"]["all"]["touched"] == {"total": 1, "list": [{"name": "alpha-api"}]}
     meta = json.loads((derived / "meta.json").read_text())
     assert meta["generated_at"] == "2026-12-31T23:00:00Z"
-    assert meta["partial_datasets"] == ["repos.touched"]        # beta-web was never run
+    assert "repos.touched" in meta["partial_datasets"]        # beta-web was never run
+    assert meta["partial_datasets"] == sorted(set(meta["partial_datasets"]))
     assert meta["corrupt_lines"] == {"alpha-api/commits.jsonl": 1}
     assert "scopes" not in meta
     assert "@" not in "".join(p.read_text() for p in derived.iterdir())
@@ -64,7 +66,7 @@ def test_families_registry_is_extensible(fx, monkeypatch):
 
     monkeypatch.setattr(agg, "FAMILIES", [*agg.FAMILIES, agg.Family("demo", builder)])
     written = agg.aggregate(fx.root)
-    assert [p.name for p in written] == ["contributors.json", "repos.json", "demo.json", "meta.json"]
+    assert [p.name for p in written] == FAMILY_FILES + ["demo.json", "meta.json"]
     assert seen == [["all", "group:alpha"]]
     assert json.loads((fx.root / "derived/demo.json").read_text())["scopes"]["all"]["x"] == {"n": 2}
     assert "demo.x" in json.loads((fx.root / "derived/meta.json").read_text())["partial_datasets"]
@@ -74,7 +76,7 @@ def test_cli_end_to_end(fx, tmp_path, capsys):
     populate(fx)
     assert main(["aggregate", "--root", str(tmp_path), "--data", "data"]) == 0
     out = capsys.readouterr().out
-    assert out.count("wrote ") == 3 and "meta.json" in out
+    assert out.count("wrote ") == len(FAMILY_FILES) + 1 and "meta.json" in out
     assert (fx.root / "derived" / "contributors.json").is_file()
 
 

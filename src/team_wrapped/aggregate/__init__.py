@@ -9,10 +9,13 @@ from typing import Callable
 from ..config import load_config
 from .context import Context
 from .contributors import build_contributors
+from .curiosities import build_curiosities
+from .delivery_volume import build_delivery_volume
 from .io import write_family, write_meta
 from .meta import build_meta
 from .raw import load_raw
 from .repos import build_repos
+from .summary import build_summary
 
 
 @dataclass(frozen=True)
@@ -26,10 +29,13 @@ class Family:
     extra: dict = field(default_factory=dict)
 
 
-# Part 2 appends summary, delivery_volume and curiosities here. Order is the order files are written.
+# Order is the order files are written.
 FAMILIES = [
     Family("contributors", build_contributors),
     Family("repos", build_repos, {"basis": "activity"}),
+    Family("summary", build_summary),
+    Family("delivery_volume", build_delivery_volume),
+    Family("curiosities", build_curiosities),
 ]
 
 
@@ -40,10 +46,10 @@ def aggregate(data_root, *, now: datetime.datetime | None = None) -> list[Path]:
     config = load_config(data_root / "config.yml")
     ctx = Context.build(data_root, config, load_raw(data_root, config))
     period = {"since": config.since, "until": config.until}
-    written, partial = [], []
+    written, partial = [], set()
     for family in FAMILIES:
         scopes, partial_names = family.build(ctx)
         written.append(write_family(data_root, family.name, period, scopes, family.extra))
-        partial.extend(n for n in partial_names if n not in partial)
-    written.append(write_meta(data_root, build_meta(ctx, partial, now)))
+        partial.update(partial_names)
+    written.append(write_meta(data_root, build_meta(ctx, sorted(partial), now)))
     return written
