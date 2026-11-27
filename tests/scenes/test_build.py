@@ -362,9 +362,9 @@ def test_repos_scene_only_shows_the_scope_repositories(repo_root, sample_root, t
 
 THEME_YML = """
 colors:
-  background: "#252f38"
-  accent: "#009cde"
-font: '"Effra", system-ui, sans-serif'
+  background: "#112233"
+  accent: "#ff8800"
+font: '"Acme Sans", system-ui, sans-serif'
 logo: assets/logo.png
 backdrop:
   images: [assets/bg 1.png, assets/bg2.png]
@@ -395,8 +395,8 @@ def test_theme_is_applied_to_the_page(repo_root, sample_root, tmp_path):
     result = build("year-wrapped", repo_root, data, tmp_path / "dist", theme="brand")
     html = result.index.read_text()
     assert '<style id="tw-theme">:root {' in html
-    assert "--tw-bg: #252f38;" in html and "--tw-accent: #009cde;" in html
-    assert '--tw-font: "Effra", system-ui, sans-serif;' in html
+    assert "--tw-bg: #112233;" in html and "--tw-accent: #ff8800;" in html
+    assert '--tw-font: "Acme Sans", system-ui, sans-serif;' in html
     assert html.count('<img class="tw-logo"') == 2            # start and end screens
     assert 'src="assets/theme/logo.png"' in html
     for name in ("logo.png", "bg 1.png", "bg2.png"):
@@ -412,7 +412,7 @@ def test_script_theme_key_selects_the_theme(repo_root, sample_root, tmp_path):
     (data / "scripts" / "branded.yml").write_text(
         "id: branded\ntheme: brand\nscope: all\nscenes:\n  - scene: how-many-of-us\n")
     result = build("branded", repo_root, data, tmp_path / "dist")
-    assert "--tw-bg: #252f38;" in result.index.read_text()
+    assert "--tw-bg: #112233;" in result.index.read_text()
     # an explicit argument wins over the script's key
     other = build("branded", repo_root, data, tmp_path / "dist2", theme="default")
     assert 'id="tw-theme"' not in other.index.read_text()
@@ -434,7 +434,7 @@ def test_cli_build_theme_option(repo_root, sample_root, tmp_path, capsys):
     code = main(["build", "year-wrapped", "--root", str(repo_root), "--data", str(data),
                  "--out", str(tmp_path / "dist"), "--theme", "brand"])
     assert code == 0
-    assert "--tw-bg: #252f38;" in (tmp_path / "dist" / "year-wrapped" / "index.html").read_text()
+    assert "--tw-bg: #112233;" in (tmp_path / "dist" / "year-wrapped" / "index.html").read_text()
     assert main(["build", "year-wrapped", "--root", str(repo_root), "--data", str(data),
                  "--out", str(tmp_path / "dist"), "--theme", "nope"]) == 2
     assert "theme 'nope' not found" in capsys.readouterr().err
