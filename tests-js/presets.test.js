@@ -91,3 +91,26 @@ test("fitFolderSize falls back to the minimum and keeps the font readable", () =
   assert.deepStrictEqual(presets.fitFolderSize(500, 300, 300), { size: 36, font: 5 });
   for (const n of [1, 40, 500]) assert.ok(presets.fitFolderSize(n, 600, 400).font >= 5);
 });
+
+test("fitFolderSize returns exact expected values for small and large repo counts", () => {
+  // 3 repos with ample space: 900 width, 492 height
+  // size 128: gapX=17.92, gapY=25.6, cols=6, rows=1, needed=96 <= 492 (fits)
+  // font = max(5, round(12.8*10)/10) = 12.8
+  assert.deepStrictEqual(presets.fitFolderSize(3, 900, 492), { size: 128, font: 12.8 });
+});
+
+test("fitFolderSize for 45 repos is the largest size that fits the constraint", () => {
+  // 45 repos with 1120 width, 574 height
+  // size 110 fits: cols=9, rows=5, needed=500.5 <= 574
+  // size 112 does not: cols=8, rows=6, needed=616 > 574
+  const result = presets.fitFolderSize(45, 1120, 574);
+  assert.strictEqual(result.size, 110);
+
+  // Verify that size+2 (112) would exceed the height constraint
+  const gapX = 112 * 0.14;
+  const gapY = 112 * 0.2;
+  const cols = Math.max(1, Math.floor((1120 + gapX) / (112 + gapX)));
+  const rows = Math.ceil(45 / cols);
+  const needed = rows * (112 * 0.75) + (rows - 1) * gapY;
+  assert.ok(needed > 574, `size 112 needs ${needed}px, exceeds 574px`);
+});

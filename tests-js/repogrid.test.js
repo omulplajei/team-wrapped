@@ -88,3 +88,28 @@ test("the folder size is fitted to the measured space, with size classes as the 
   const bare = render(PARAMS, dataFor(NAMES)).container.children[0].children[1];
   assert.strictEqual(bare.style["--tw-folder"], undefined);
 });
+
+test("the folder size fit is discriminating with many repositories and constrained space", () => {
+  // With 45 repos, constrained dimensions, and a 1120 width cap in render.js:
+  // availW = min(1500, 1120) = 1120, availH = 682 - 24 - 60 - 24 = 574
+  // Fit formula: sizes 128→36 step 2; gapX = size*0.14; gapY = size*0.2
+  // cols = max(1, floor((1120 + gapX)/(size + gapX))); rows = ceil(45/cols)
+  // needed = rows*size*0.75 + (rows-1)*gapY
+  // For size=112: gapX=15.68, gapY=22.4, cols=8, rows=6, needed=6*84+5*22.4=616 > 574 (too big)
+  // For size=110: gapX=15.4, gapY=22, cols=9, rows=5, needed=5*82.5+4*22=500.5 <= 574 (fits)
+  // font = max(5, round(110*0.1*10)/10) = max(5, 11) = 11
+  const names = Array.from({ length: 45 }, (_, i) => `repo-${i}`);
+  const defaults = { clientWidth: 1500, clientHeight: 682, offsetTop: 24, offsetHeight: 60 };
+  const grid = render(PARAMS, dataFor(names), defaults).container.children[0].children[1];
+  assert.strictEqual(grid.style["--tw-folder"], "110px");
+  assert.strictEqual(grid.style["--tw-folder-font"], "11px");
+});
+
+test("the folder size is not set when the container has no measurable dimensions", () => {
+  const names = Array.from({ length: 3 }, (_, i) => `repo-${i}`);
+  const defaults = { clientWidth: 0, clientHeight: 0, offsetTop: 0, offsetHeight: 0 };
+  const grid = render(PARAMS, dataFor(names), defaults).container.children[0].children[1];
+  assert.strictEqual(grid.style["--tw-folder"], undefined);
+  assert.strictEqual(grid.style["--tw-folder-font"], undefined);
+  assert.strictEqual(grid.className, "tw-folders tw-folders-lg");
+});
