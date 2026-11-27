@@ -178,3 +178,14 @@ def test_new_keys_are_read(tmp_path):
 def test_bad_new_keys_are_rejected(tmp_path, extra, message):
     with pytest.raises(LoadError, match=message):
         load_config(write(tmp_path, MIN + extra + "\n"))
+
+
+def test_commit_branches_defaults_to_default_and_reads_all(tmp_path):
+    assert load_config(write(tmp_path, MIN)).commit_branches == "default"
+    assert load_config(write(tmp_path, MIN + "commit_branches: all\n")).commit_branches == "all"
+
+
+@pytest.mark.parametrize("value", ["main", "[default]", "1"])
+def test_bad_commit_branches_are_rejected(tmp_path, value):
+    with pytest.raises(LoadError, match="commit_branches"):
+        load_config(write(tmp_path, MIN + f"commit_branches: {value}\n"))

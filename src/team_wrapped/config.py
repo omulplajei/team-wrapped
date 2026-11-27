@@ -35,6 +35,7 @@ class Config:
     timezone: str = "UTC"
     top_n: int = 5                  # curiosities.top_n
     download_avatars: bool = True   # avatars.download
+    commit_branches: str = "default"    # `default` or `all`; `collect` supports `default` only for now
 
 
 def _date(path, value) -> datetime.date | None:
@@ -126,6 +127,14 @@ def _download_avatars(path, section) -> bool:
     return value
 
 
+def _commit_branches(path, value) -> str:
+    if value is None:
+        return "default"
+    if value not in ("default", "all"):
+        raise LoadError(f"{path}: commit_branches must be default or all (got {value!r})")
+    return value
+
+
 def load_config(path) -> Config:
     path = Path(path)
     if not path.is_file():
@@ -193,4 +202,5 @@ def load_config(path) -> Config:
                   aliases=_aliases(path, data.get("aliases")),
                   timezone=_timezone(path, data.get("timezone")),
                   top_n=_top_n(path, data.get("curiosities")),
-                  download_avatars=_download_avatars(path, data.get("avatars")))
+                  download_avatars=_download_avatars(path, data.get("avatars")),
+                  commit_branches=_commit_branches(path, data.get("commit_branches")))
