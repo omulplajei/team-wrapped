@@ -1,12 +1,12 @@
 id: we-looked-after-each-other
-title: We look after each other
+title: We looked after each other
 type: sequence
 requires:
   - dataset: summary.totals
     fields: [merged_prs, comments]
     allow_partial: false
 params:
-  heading: "We look after each other"
+  heading: "We looked after each other"
   steps:
     - {lead: "We merged", value: summary.totals.merged_prs, label: "Pull requests"}
     - {lead: "and left", value: summary.totals.comments, label: "Comments"}

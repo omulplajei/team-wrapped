@@ -5,7 +5,7 @@ const { makeEl, loadRenderer, fakeTimeline, find } = require("./helpers.js");
 
 const DATA = { "summary.totals": { reviews: 540, comments: 1180 } };
 const PARAMS = {
-  heading: "We look after each other",
+  heading: "We looked after each other",
   steps: [
     { lead: "We merged", value: "summary.totals.reviews", label: "Pull requests" },
     { lead: "and left", value: "summary.totals.comments", label: "Comments" },
@@ -36,7 +36,7 @@ test("the heading is the first thing in the scene", () => {
   assert.strictEqual(result, tl);
   const wrap = container.children[0];
   assert.strictEqual(wrap.children[0].className, "tw-seq-heading");
-  assert.strictEqual(wrap.children[0].textContent, "We look after each other");
+  assert.strictEqual(wrap.children[0].textContent, "We looked after each other");
 });
 
 test("each step is one line: lead text, then the number, then its label", () => {
