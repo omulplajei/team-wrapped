@@ -10,6 +10,7 @@ TYPES = {
     "stats": SceneType("stats", 8.0, ["items"], Path(".")),
     "bignumber": SceneType("bignumber", 6.0, ["value", "label"], Path(".")),
     "repogrid": SceneType("repogrid", 8.0, ["heading", "value", "names"], Path(".")),
+    "sequence": SceneType("sequence", 6.0, ["heading", "steps"], Path(".")),
 }
 CATALOG = {"summary.totals", "contributors", "repos.touched"}
 
@@ -166,3 +167,21 @@ def test_repogrid_names_must_resolve_to_a_list(tmp_path):
     missing = dict(ok, names="repos.touched.nope")
     report = run(tmp_path / "c", REPO_REQ, params=missing, type_="repogrid")
     assert "names 'repos.touched.nope' does not resolve to a list" in report.results[0].problems
+
+
+def test_sequence_steps_values_are_checked(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    (tmp_path / "c").mkdir()
+    ok = {"heading": "H", "steps": [
+        {"value": "summary.totals.commits", "label": "Commits"},
+        {"text": "and left"},
+        {"value": "summary.totals.commits", "label": "Again"},
+    ]}
+    assert run(tmp_path / "a", REQ, params=ok, type_="sequence").results[0].status == "supported"
+    bad = {"heading": "H", "steps": [{"value": "summary.totals.nope", "label": "X"}]}
+    report = run(tmp_path / "b", REQ, params=bad, type_="sequence")
+    assert "value 'summary.totals.nope' does not resolve to required data" in report.results[0].problems
+    not_a_number = {"heading": "H", "steps": [{"value": "summary.totals", "label": "X"}]}
+    report = run(tmp_path / "c", REQ, params=not_a_number, type_="sequence")
+    assert "value 'summary.totals' is not a number" in report.results[0].problems

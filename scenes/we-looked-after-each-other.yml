@@ -1,12 +1,13 @@
 id: we-looked-after-each-other
-title: We looked after each other
-type: bignumber
+title: We look after each other
+type: sequence
 requires:
   - dataset: summary.totals
     fields: [reviews, comments]
     allow_partial: false
 params:
-  value: summary.totals.reviews
-  label: "Reviews"
-  supporting:
-    - {label: "Comments", value: summary.totals.comments}
+  heading: "We look after each other"
+  steps:
+    - {value: summary.totals.reviews, label: "Pull requests"}
+    - {text: "and left"}
+    - {value: summary.totals.comments, label: "Comments"}

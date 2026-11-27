@@ -52,6 +52,7 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     assert 'TeamWrapped.sceneTypes["headcount"]' in html
     assert 'TeamWrapped.sceneTypes["bignumber"]' in html
     assert 'TeamWrapped.sceneTypes["repogrid"]' in html
+    assert 'TeamWrapped.sceneTypes["sequence"]' in html
     assert 'TeamWrapped.sceneTypes["message"]' not in html   # only used types are inlined
     assert "export default" not in html
 

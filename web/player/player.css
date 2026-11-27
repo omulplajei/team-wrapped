@@ -69,3 +69,10 @@ body:not(.tw-started) #tw-controls { display: none; }
   padding: 0.3rem; background: linear-gradient(#f4c75f, #e0a93b); border-radius: 0 8px 8px 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); color: #2a1f05; font-weight: 600;
   font-size: var(--tw-folder-font); line-height: 1.15; text-align: center; overflow: hidden; overflow-wrap: anywhere; }
+.tw-seq { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; align-items: center; }
+.tw-seq-heading { margin-top: 1.5rem; font-size: clamp(1.6rem, 5vw, 3rem); font-weight: 700; text-align: center; }
+.tw-seq-body { margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 1.6rem; text-align: center; }
+.tw-seq-value { font-size: clamp(3.5rem, 13vw, 8rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.tw-seq-label { font-size: clamp(1.1rem, 3vw, 1.8rem); opacity: 0.8; margin-top: 0.4rem; }
+.tw-seq-partial { margin-top: 0.3rem; font-size: 0.75rem; color: #e6b450; }
+.tw-seq-text { font-size: clamp(1.4rem, 4vw, 2.4rem); font-weight: 600; opacity: 0.9; }

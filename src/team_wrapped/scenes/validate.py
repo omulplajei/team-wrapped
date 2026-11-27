@@ -16,7 +16,7 @@ def _value_refs(params: dict, include_top_level_value: bool) -> list[str]:
     refs = []
     if include_top_level_value and isinstance(params.get("value"), str):
         refs.append(params["value"])
-    for key in ("items", "supporting"):
+    for key in ("items", "supporting", "steps"):
         entries = params.get(key)
         if isinstance(entries, list):
             for entry in entries:
