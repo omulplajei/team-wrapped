@@ -381,3 +381,49 @@ test("fillTemplate plural syntax prints nothing for a missing or non-number valu
 test("fillTemplate plural syntax treats prototype keys as missing", () => {
   assert.strictEqual(presets.fillTemplate("{constructor:a|b}{__proto__:a|b}{toString:a|b}", {}), "");
 });
+
+test("scatterLayout gives every avatar its own spot inside the area, without overlap", () => {
+  [[5, 900, 500], [60, 900, 500], [300, 900, 500], [1, 400, 300]].forEach(([count, w, h]) => {
+    const { size, points } = presets.scatterLayout(count, w, h);
+    assert.strictEqual(points.length, count);
+    points.forEach((p) => {
+      assert.ok(p.x - size / 2 >= -1e-9 && p.x + size / 2 <= w + 1e-9, `x in bounds for ${count}`);
+      assert.ok(p.y - size / 2 >= -1e-9 && p.y + size / 2 <= h + 1e-9, `y in bounds for ${count}`);
+    });
+    for (let i = 0; i < count; i++) {
+      for (let j = i + 1; j < count; j++) {
+        assert.ok(Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y) >= size - 1e-9, `${i} and ${j} overlap`);
+      }
+    }
+  });
+});
+
+test("scatterLayout is deterministic, loose rather than a strict grid, and shrinks with the count", () => {
+  const a = presets.scatterLayout(40, 900, 500);
+  assert.deepStrictEqual(presets.scatterLayout(40, 900, 500), a);
+  assert.ok(new Set(a.points.map((p) => Math.round(p.x * 10) / 10)).size > 10);
+  assert.ok(presets.scatterLayout(5, 900, 500).size > a.size);
+  assert.ok(a.size > presets.scatterLayout(300, 900, 500).size);
+});
+
+test("scatterLayout handles no avatars, and falls back to the minimum size when nothing fits", () => {
+  assert.deepStrictEqual(presets.scatterLayout(0, 900, 500), { size: 0, points: [] });
+  assert.strictEqual(presets.scatterLayout(5000, 300, 100).size, 20);
+});
+
+test("dropIn drops targets from above, then squashes and springs them back on landing", () => {
+  const calls = [];
+  const tl = {
+    fromTo: (t, from, vars, at) => { calls.push({ kind: "fromTo", from, vars, at }); return tl; },
+    to: (t, vars, at) => { calls.push({ kind: "to", vars, at }); return tl; },
+  };
+  assert.strictEqual(presets.dropIn(tl, ["a", "b"], 1, 0.1, (i) => 300 + i, 1), tl);
+  const [drop, squash, spring] = calls;
+  assert.strictEqual(drop.from.y(1), -301);
+  assert.strictEqual(drop.vars.ease, "bounce.out");
+  assert.strictEqual(drop.vars.stagger, 0.1);
+  assert.ok(squash.vars.scaleY < 1 && squash.vars.scaleX > 1);
+  assert.ok(squash.at > 1 && squash.at < 2);
+  assert.deepStrictEqual([spring.vars.scaleX, spring.vars.scaleY], [1, 1]);
+  assert.ok(spring.at > squash.at);
+});

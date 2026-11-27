@@ -47,7 +47,7 @@ It prints the page path when it is done, and stops with a message (exit code 1 o
 ## Layout
 
 - `scenes/`, `scripts/`: shared scene and script definitions.
-- `web/`: the player, scene types, animation presets and vendored GSAP.
+- `web/`: the player, scene types (one folder each, e.g. `cast` for the closing people scene), animation presets and vendored GSAP.
 - `docs/datasets.md`: the catalog of datasets a scene may require.
 - `data-sample/`: dummy data in the same layout as your private `data/` folder.
 - `data/` and `dist/`: private, git-ignored. Put your own derived data, scenes, scripts and music in `data/`.

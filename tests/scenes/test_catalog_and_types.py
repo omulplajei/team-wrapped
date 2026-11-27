@@ -38,10 +38,12 @@ def test_catalog_from_small_file(tmp_path):
 
 def test_scene_types_load_from_web(repo_root):
     types = load_scene_types(repo_root / "web")
-    assert set(types) >= {"message", "stats", "headcount"}
+    assert set(types) >= {"message", "stats", "headcount", "cast"}
     assert types["stats"].default_duration == 8.0
     assert types["stats"].required_params == ["items"]
     assert types["headcount"].required_params == ["groups"]
+    assert types["cast"].default_duration == 14.0
+    assert types["cast"].required_params == ["stages"]
     assert types["message"].dir.name == "message"
 
 

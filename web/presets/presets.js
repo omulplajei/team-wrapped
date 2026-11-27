@@ -61,6 +61,50 @@
     }, at);
   }
 
+  // Drops targets in from above, bounces them on landing and squashes each one as it hits the ground.
+  // `rise(i)` is how far above its final spot target i starts; depends only on the index, so replays look identical.
+  function dropIn(tl, targets, at = 0, each = 0.08, rise = () => 400, duration = 0.9) {
+    tl.fromTo(targets, { opacity: 0, y: (i) => -rise(i) },
+      { opacity: 1, y: 0, duration, stagger: each, ease: "bounce.out" }, at);
+    // bounce.out first touches the ground at 1/2.75 of its duration; squash then spring back
+    const land = at + duration * 0.36;
+    tl.to(targets, { scaleX: 1.15, scaleY: 0.8, duration: 0.08, stagger: each, ease: "power2.out" }, land);
+    return tl.to(targets, { scaleX: 1, scaleY: 1, duration: 0.4, stagger: each, ease: "elastic.out(1, 0.5)" }, land + 0.08);
+  }
+
+  // Scatters `count` avatars loosely over width x height without overlap: a grid of roomy cells, each avatar
+  // jittered inside its cell, cells visited in a fixed scrambled order. Returns {size, points: [{x, y}]} (centres).
+  // Deterministic, and the avatar size shrinks as the count grows so large teams fit.
+  function scatterLayout(count, width, height, maxSize = 120, minSize = 20) {
+    if (!(count > 0)) return { size: 0, points: [] };
+    let size = minSize;
+    let cols = 1;
+    let rows = count;
+    for (let s = maxSize; s >= minSize; s -= 2) {
+      const c = Math.max(1, Math.floor(width / (s * 1.25)));
+      const r = Math.ceil(count / c);
+      if (r * s * 1.25 <= height) { size = s; cols = c; rows = r; break; }
+      if (s - 2 < minSize) { size = minSize; cols = c; rows = r; }
+    }
+    const cell = size * 1.25;
+    const total = cols * rows;
+    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+    let step = Math.max(1, Math.round(total * 0.618));
+    while (gcd(step, total) !== 1) step++;
+    const left = (width - cols * cell) / 2;
+    const top = Math.max(0, (height - rows * cell) / 2);
+    const jitter = (i, k) => (((Math.imul(i + 1, k) >>> 0) % 1000) / 1000 - 0.5) * (cell - size);
+    const points = [];
+    for (let i = 0; i < count; i++) {
+      const at = (i * step) % total;
+      points.push({
+        x: left + (at % cols + 0.5) * cell + jitter(i, 2654435761),
+        y: top + (Math.floor(at / cols) + 0.5) * cell + jitter(i, 40503),
+      });
+    }
+    return { size, points };
+  }
+
   // Schedules the main count and the tail beats on `tl`, calling show(v) whenever the value changes.
   // `beat` is {duration, ease} for the single-increment tail beats.
   function scheduleCount(tl, to, at, duration, ease, tail, show, beat) {
@@ -209,7 +253,7 @@
     });
   }
 
-  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, countUp, wheelPositions, odometer, fitFolderSize, formatDate, formatMonth, fillTemplate };
+  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, dropIn, scatterLayout, countUp, wheelPositions, odometer, fitFolderSize, formatDate, formatMonth, fillTemplate };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

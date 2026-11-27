@@ -40,7 +40,7 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
         "curiosity-most-commits-pr", "curiosity-spring-cleaning",
         "repos-touched", "we-changed-the-code", "how-many-of-us",
     ]
-    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 8.0, 6.0, 10.0]
+    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 8.0, 6.0, 14.0]
     assert scenes["we-shipped"]["partial"] == []
     assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
@@ -57,7 +57,7 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
 
     html = result.index.read_text()
     assert 'TeamWrapped.sceneTypes["stats"]' in html
-    assert 'TeamWrapped.sceneTypes["headcount"]' in html
+    assert 'TeamWrapped.sceneTypes["cast"]' in html
     assert 'TeamWrapped.sceneTypes["bignumber"]' in html
     assert 'TeamWrapped.sceneTypes["repogrid"]' in html
     assert 'TeamWrapped.sceneTypes["sequence"]' in html

@@ -1,14 +1,14 @@
-# Closing scene: headcount, with the robots shown apart from the humans.
+# Closing scene: the cast of the year, humans first and then the robots joining them.
 id: how-many-of-us
 title: How many of us
-type: headcount
+type: cast
 requires:
   - dataset: contributors
     fields: [by_kind, list.kind, list.login, list.avatar_file]
     allow_partial: false
 params:
-  groups:
-    - label: "Humans"
+  stages:
+    - heading: "All done by {count:contributor|contributors}"
       kinds: [human, unlinked]
-    - label: "Robots"
+    - heading: "… and {count:robot|robots}"
       kinds: [bot]
