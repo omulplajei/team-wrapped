@@ -34,3 +34,15 @@ test("elapsed is the inverse of sceneAt", () => {
   assert.strictEqual(timing.elapsed(d, 0, 0), 0);
   assert.strictEqual(timing.elapsed(d, 2, 1), 20);
 });
+
+test("backdropFor cycles through the images by scene index", () => {
+  const images = ["a.png", "b.png", "c.png"];
+  assert.strictEqual(timing.backdropFor(images, 0), "a.png");
+  assert.strictEqual(timing.backdropFor(images, 2), "c.png");
+  assert.strictEqual(timing.backdropFor(images, 3), "a.png");
+  assert.strictEqual(timing.backdropFor(images, 7), "b.png");
+  assert.strictEqual(timing.backdropFor(images, -1), "c.png");
+  assert.strictEqual(timing.backdropFor([], 0), null);
+  assert.strictEqual(timing.backdropFor(null, 0), null);
+  assert.strictEqual(timing.backdropFor(undefined, 4), null);
+});

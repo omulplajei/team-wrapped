@@ -29,7 +29,13 @@
     return offsets(durations)[index].start + durations[index] * progress;
   }
 
-  const api = { offsets, total, sceneAt, elapsed };
+  function backdropFor(images, index) {
+    if (!Array.isArray(images) || images.length === 0) return null;
+    const n = images.length;
+    return images[((index % n) + n) % n];
+  }
+
+  const api = { offsets, total, sceneAt, elapsed, backdropFor };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

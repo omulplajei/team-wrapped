@@ -325,7 +325,17 @@ A page built from `data/` contains real data and is private. A page built with `
 - A headless-browser smoke test loads the built page, clicks Play, pauses, jumps to the last scene through the progress line and toggles mute, and fails on any console error.
 - Renderers are tested by building a timeline on sample data and checking that its duration matches the scene's duration.
 
-## 14. Out of scope (for now)
+## 14. Themes
+
+A theme controls the look of a built page: colours, a font, a logo on the start and end screens, and background images that change per scene. The repo ships only the neutral `default` theme (the built-in look); a team's brand lives in a private theme folder so that no company branding or trademarks are committed.
+
+- **Folder.** `themes/<name>/theme.yml` plus asset files, found in the repo root, in `data/`, or in the chosen data folder; later locations override earlier ones. Brand themes go in `data/themes/<name>/` (git-ignored). Theme names match `[A-Za-z0-9][A-Za-z0-9_-]*`.
+- **`theme.yml`.** `colors` (any of: `background`, `text`, `accent`, `warning`, `surface`, `controls-bg`, `button-bg`, `button-text`, `focus`, `folder-top`, `folder-bottom`, `folder-tab`, `folder-text`), `font`, `logo` (a relative path), `backdrop` (`images`: relative paths, cycled by scene index; `opacity`: 0 to 1). Unknown keys are errors.
+- **Safety.** Colour values must be `#hex` or `rgb()`/`rgba()`, the font a comma-separated list of up to 10 families, each a quoted name or a plain name, and asset paths relative and inside the theme folder; assets in one theme must not share a file name. Anything else is a load error. Nothing from a theme is inserted into the page unvalidated.
+- **Choosing.** `build --theme NAME`, else the script's `theme:` key, else `default`.
+- **Output.** Non-default colours and font become CSS variable overrides in the page; assets are copied to `assets/theme/`; the logo is shown above the title on the start screen and above Replay on the end screen; the backdrop images appear behind the scenes with a short cross-fade. With no theme the page is unchanged.
+
+## 15. Out of scope (for now)
 
 - Visual design details (colours, typography, layouts), which come with the first renderers
 - Delivery speed (time to merge, time to first review), contributor footprint statistics and repo comparison tables. They can be added later as aggregate modules because the raw data already supports them

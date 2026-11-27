@@ -29,6 +29,10 @@ python3 -m http.server 8000 --directory dist/year-wrapped
 
 A script can set `music: {file: theme.mp3, volume: 0.3}`. The file is read from `data/assets/` (or give an `https://` URL). Music files are never committed.
 
+## Themes
+
+`build` takes `--theme NAME` (or a `theme:` line in a script). A theme is a folder `themes/<name>/` with a `theme.yml` (colours, font, logo, backdrop images) and its asset files; put your own in `data/themes/<name>/`, which is git-ignored, so brand assets stay out of the repo. See section 14 of the spec for the format.
+
 ## Tests
 
 ```bash

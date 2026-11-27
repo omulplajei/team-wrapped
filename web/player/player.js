@@ -8,6 +8,8 @@
   const scenes = payload.scenes;
   const durations = scenes.map((s) => s.duration);
   const music = payload.script.music;
+  const theme = payload.script.theme;
+  const backdrop = document.getElementById("tw-backdrop");
   const MUTE_KEY = "tw-muted";
   const FADE = 0.4;
 
@@ -93,6 +95,13 @@
   });
 
   // ---- scenes --------------------------------------------------------
+  function showBackdrop(index) {
+    const image = theme && theme.backdrop ? timing.backdropFor(theme.backdrop.images, index) : null;
+    if (!image) return;
+    backdrop.style.backgroundImage = 'url("' + image + '")';
+    gsap.fromTo(backdrop, { opacity: 0 }, { opacity: theme.backdrop.opacity, duration: 0.6, overwrite: true });
+  }
+
   function enter(index, play) {
     els.end.hidden = true;
     if (state.tl) state.tl.kill();
@@ -119,6 +128,7 @@
     tl.to({}, { duration: scene.duration }, 0);
 
     state.index = index;
+    showBackdrop(index);
     state.tl = tl;
     state.el = el;
     state.playing = !!play;
