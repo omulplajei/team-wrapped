@@ -90,3 +90,13 @@ def test_cli_reports_config_errors_with_exit_1(fx, tmp_path, capsys):
 def test_cli_reports_a_missing_config(tmp_path, capsys):
     assert main(["aggregate", "--root", str(tmp_path), "--data", "nope"]) == 1
     assert "config file not found" in capsys.readouterr().err
+
+
+def test_since_and_until_override_the_configured_window(fx):
+    populate(fx)
+    agg.aggregate(fx.root, since="2026-02-01", until="2026-02-28")
+    derived = fx.root / "derived"
+    assert json.loads((derived / "summary.json").read_text())["period"] == {"since": "2026-02-01", "until": "2026-02-28"}
+    assert json.loads((derived / "meta.json").read_text())["period"] == {"since": "2026-02-01", "until": "2026-02-28"}
+    assert main(["aggregate", "--root", str(fx.root.parent), "--data", fx.root.name, "--since", "2026-03-01"]) == 0
+    assert json.loads((derived / "summary.json").read_text())["period"] == {"since": "2026-03-01", "until": "2026-12-31"}

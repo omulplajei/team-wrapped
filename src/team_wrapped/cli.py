@@ -48,7 +48,7 @@ def _cmd_derive_repos(args) -> int:
 
 def _cmd_aggregate(args) -> int:
     try:
-        written = aggregate(Path(args.root) / args.data)
+        written = aggregate(Path(args.root) / args.data, since=args.since, until=args.until)
     except LoadError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -107,6 +107,8 @@ def main(argv: list[str] | None = None) -> int:
     agg = sub.add_parser("aggregate", help="write derived/*.json from data/raw")
     agg.add_argument("--root", default=".", help="repository root (default: current directory)")
     agg.add_argument("--data", default="data", help="data folder under the root (default: data)")
+    agg.add_argument("--since", help="window start YYYY-MM-DD for this run (default: config since)")
+    agg.add_argument("--until", help="window end YYYY-MM-DD for this run (default: config until)")
     col = sub.add_parser("collect", help="fetch GitHub activity into data/raw with gh (GraphQL)")
     col.add_argument("--root", default=".", help="repository root (default: current directory)")
     col.add_argument("--data", default="data", help="data folder under the root (default: data)")

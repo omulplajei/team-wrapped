@@ -1,6 +1,7 @@
 """The `aggregate` stage: raw JSONL in, derived JSON out (spec 5.2, 7.6)."""
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,11 +40,14 @@ FAMILIES = [
 ]
 
 
-def aggregate(data_root, *, now: datetime.datetime | None = None) -> list[Path]:
+def aggregate(data_root, *, now: datetime.datetime | None = None,
+              since: str | None = None, until: str | None = None) -> list[Path]:
     """Read data/config.yml and data/raw, write data/derived/*.json. Returns the files written, meta last.
-    Raises LoadError on a bad config."""
+    `since`/`until` (YYYY-MM-DD) override the configured window for this run. Raises LoadError on a bad config."""
     data_root = Path(data_root)
     config = load_config(data_root / "config.yml")
+    if since or until:
+        config = dataclasses.replace(config, since=since or config.since, until=until or config.until)
     ctx = Context.build(data_root, config, load_raw(data_root, config))
     period = {"since": config.since, "until": config.until}
     written, partial = [], set()
