@@ -1,3 +1,8 @@
 # Private data: config, raw and derived data, avatars, scenes, scripts
 /data/
 /dist/
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
