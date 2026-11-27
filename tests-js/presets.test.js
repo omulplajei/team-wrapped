@@ -132,3 +132,12 @@ test("swellIn appears, grows past its size and settles back to 1", () => {
   assert.ok(Math.abs(settle.at - (2 + 0.6 * 0.55)) < 1e-9);
   assert.ok(Math.abs(grow.vars.duration + settle.vars.duration - 0.6) < 1e-9);
 });
+
+test("countUp takes an optional ease and keeps power1.out by default", () => {
+  const calls = [];
+  const tl = { to: (target, vars, at) => { calls.push({ vars, at }); return tl; } };
+  presets.countUp(tl, { textContent: "" }, 10, 0, 1);
+  presets.countUp(tl, { textContent: "" }, 10, 0, 1, "expo.out");
+  assert.strictEqual(calls[0].vars.ease, "power1.out");
+  assert.strictEqual(calls[1].vars.ease, "expo.out");
+});

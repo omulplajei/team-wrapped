@@ -61,13 +61,13 @@
     }, at);
   }
 
-  function countUp(tl, el, to, at = 0, duration = 1.2) {
+  function countUp(tl, el, to, at = 0, duration = 1.2, ease = "power1.out") {
     const state = { v: 0 };
     el.textContent = format(0);
     return tl.to(state, {
       v: to,
       duration,
-      ease: "power1.out",
+      ease,
       onUpdate: () => { el.textContent = format(Math.round(state.v)); },
     }, at);
   }

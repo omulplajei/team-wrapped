@@ -1,6 +1,7 @@
 id: we-shipped
 title: We worked hard
 type: bignumber
+duration: 8
 requires:
   - dataset: summary.totals
     fields: [commits]
@@ -9,3 +10,6 @@ params:
   heading: "This year, we worked hard"
   value: summary.totals.commits
   label: "Commits"
+  # Race up fast, then slow right down so the last increments land one at a time.
+  count_ease: "expo.out"
+  count_duration: 4.5

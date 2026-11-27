@@ -21,9 +21,12 @@ export default {
     label.textContent = params.label;
     wrap.append(value, label);
 
+    // Optional shaping of the hero count-up (for example a dramatic expo.out); invalid values fall back to the defaults.
+    const countDuration = typeof params.count_duration === "number" && params.count_duration > 0 ? params.count_duration : 2.5;
+    const countEase = typeof params.count_ease === "string" && params.count_ease !== "" ? params.count_ease : "power1.out";
     const hero = presets.lookup(data, params.value);
     if (typeof hero === "number") {
-      presets.countUp(tl, value, hero, 0.3 + delay, 2.5);
+      presets.countUp(tl, value, hero, 0.3 + delay, countDuration, countEase);
     } else {
       value.textContent = "–";
     }

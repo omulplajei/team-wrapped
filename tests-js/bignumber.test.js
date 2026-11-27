@@ -97,3 +97,24 @@ test("an empty heading adds no element and no delay", () => {
   assert.strictEqual(find(container, "tw-hero-heading").length, 0);
   assert.deepStrictEqual(tl.calls.filter((c) => c.kind === "to" && "v" in c.vars).map((c) => round2(c.at)), [0.3, 2.8]);
 });
+
+test("count_duration and count_ease shape the hero count-up only", () => {
+  const counts = (params) => render(params, DATA).tl.calls.filter((c) => c.kind === "to" && "v" in c.vars);
+  const dflt = counts(PARAMS);
+  assert.strictEqual(dflt[0].vars.duration, 2.5);
+  assert.strictEqual(dflt[0].vars.ease, "power1.out");
+  const dramatic = counts({ ...PARAMS, count_duration: 4.5, count_ease: "expo.out" });
+  assert.strictEqual(dramatic[0].vars.duration, 4.5);
+  assert.strictEqual(dramatic[0].vars.ease, "expo.out");
+  // the supporting figure keeps its own 1.0 s power1.out count-up
+  assert.strictEqual(dramatic[1].vars.duration, 1.0);
+  assert.strictEqual(dramatic[1].vars.ease, "power1.out");
+});
+
+test("invalid count settings fall back to the defaults", () => {
+  const hero = (params) => render(params, DATA).tl.calls.find((c) => c.kind === "to" && "v" in c.vars).vars;
+  const bad = hero({ ...PARAMS, count_duration: "slow", count_ease: 5 });
+  assert.strictEqual(bad.duration, 2.5);
+  assert.strictEqual(bad.ease, "power1.out");
+  assert.strictEqual(hero({ ...PARAMS, count_duration: -1 }).duration, 2.5);
+});
