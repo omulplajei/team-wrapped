@@ -163,8 +163,9 @@
     return { size: 36, font: 5 };
   }
 
-  const DAY = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
-  const DAY_SHORT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+  // Separate parts joined by hand, so older ICU/CLDR versions cannot add a comma after the weekday.
+  const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "UTC" });
+  const DAY_NUM = new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "UTC" });
   const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
 
   // "2026-03-14" -> "Saturday 14 March" (or "14 March" without the weekday); other values are returned unchanged.
@@ -173,7 +174,8 @@
     if (!m) return iso;
     const date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
     if (date.getUTCMonth() !== +m[2] - 1 || date.getUTCDate() !== +m[3]) return iso;     // impossible date
-    return (withWeekday ? DAY : DAY_SHORT).format(date);
+    const dayMonth = `${DAY_NUM.format(date)} ${MONTH.format(date)}`;
+    return withWeekday ? `${WEEKDAY.format(date)} ${dayMonth}` : dayMonth;
   }
 
   // "2026-03" -> "March"; other values are returned unchanged.
@@ -191,10 +193,12 @@
     month: (v) => formatMonth(v),
   };
   function fillTemplate(template, record) {
+    const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+    const rec = record !== null && typeof record === "object" ? record : {};
     return String(template).replace(/\{(\w+)\}/g, (_, key) => {
-      const value = record[key];
+      const value = has(rec, key) ? rec[key] : undefined;
       if (value === undefined || value === null) return "";
-      if (FIELD_FORMATS[key]) return FIELD_FORMATS[key](String(value));
+      if (has(FIELD_FORMATS, key)) return FIELD_FORMATS[key](String(value));
       if (/_number$/.test(key)) return String(value);                    // ids are never given thousands separators
       return typeof value === "number" ? format(value) : String(value);
     });

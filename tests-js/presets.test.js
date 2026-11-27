@@ -329,3 +329,34 @@ test("fillTemplate fills record fields with the right formats", () => {
   assert.strictEqual(presets.fillTemplate("{missing}|{repo}", record), "|sample-api");   // unknown fields become empty
   assert.strictEqual(presets.fillTemplate("no placeholders", record), "no placeholders");
 });
+
+test("impossible dates and months are returned unchanged; leap days work", () => {
+  assert.strictEqual(presets.formatDate("2026-02-30"), "2026-02-30");
+  assert.strictEqual(presets.formatDate("2026-13-01"), "2026-13-01");
+  assert.strictEqual(presets.formatMonth("2026-00"), "2026-00");
+  assert.strictEqual(presets.formatDate("2028-02-29", false), "29 February");
+  assert.strictEqual(presets.formatDate("2026-02-29"), "2026-02-29");
+});
+
+test("formatDate never prints a comma", () => {
+  const text = presets.formatDate("2026-03-14");
+  assert.strictEqual(text, "Saturday 14 March");
+  assert.ok(!text.includes(","));
+});
+
+test("fillTemplate treats prototype keys as missing and tolerates a null record", () => {
+  assert.strictEqual(presets.fillTemplate("{constructor}|{toString}|{__proto__}|{hasOwnProperty}", {}), "|||");
+  assert.strictEqual(presets.fillTemplate("{a}{b}", null), "");
+  assert.strictEqual(presets.fillTemplate("{a}{b}", undefined), "");
+});
+
+test("date text does not depend on the process time zone", () => {
+  const path = require("node:path");
+  const { execFileSync } = require("node:child_process");
+  const mod = path.join(__dirname, "..", "web", "presets", "presets.js");
+  const script = `const p = require(${JSON.stringify(mod)}); console.log(p.formatDate('2026-03-14') + '|' + p.formatDate('2026-03-01', false));`;
+  ["America/Los_Angeles", "Pacific/Auckland"].forEach((zone) => {
+    const out = execFileSync(process.execPath, ["-e", script], { env: { ...process.env, TZ: zone } }).toString().trim();
+    assert.strictEqual(out, "Saturday 14 March|1 March", zone);
+  });
+});

@@ -82,3 +82,15 @@ test("a partial dataset gets a badge that fades in with the unit", () => {
   assert.strictEqual(round2(fade.at), 1.35);
   assert.strictEqual(find(render(PARAMS, DATA, []).container, "tw-cur-partial").length, 0);
 });
+
+test("the fades use the teaser, unit and context durations", () => {
+  const { tl } = render(PARAMS);
+  const fades = tl.calls.filter((c) => c.kind === "from" && !Array.isArray(c.targets));
+  assert.deepStrictEqual(fades.map((c) => c.vars.duration), [0.6, 0.4, 0.5]);
+});
+
+test("a 4-digit pr_number prints without a thousands separator", () => {
+  const data = { "curiosities.longest_comment_chain": [{ value: 9, repo: "sample-api", pr_number: 4821 }] };
+  const { container } = render(PARAMS, data);
+  assert.strictEqual(find(container, "tw-cur-context")[0].textContent, "in sample-api, pull request #4821");
+});
