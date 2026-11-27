@@ -3,10 +3,10 @@ title: We look after each other
 type: sequence
 requires:
   - dataset: summary.totals
-    fields: [reviews, comments]
+    fields: [merged_prs, comments]
     allow_partial: false
 params:
   heading: "We look after each other"
   steps:
-    - {lead: "We raised", value: summary.totals.reviews, label: "Pull requests"}
+    - {lead: "We raised", value: summary.totals.merged_prs, label: "Pull requests"}
     - {lead: "and left", value: summary.totals.comments, label: "Comments"}

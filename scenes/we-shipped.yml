@@ -3,10 +3,8 @@ title: We shipped
 type: bignumber
 requires:
   - dataset: summary.totals
-    fields: [commits, merged_prs]
+    fields: [commits]
     allow_partial: false
 params:
   value: summary.totals.commits
   label: "Commits"
-  supporting:
-    - {label: "Merged pull requests", value: summary.totals.merged_prs}
