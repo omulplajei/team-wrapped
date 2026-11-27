@@ -52,22 +52,22 @@ body:not(.tw-started) #tw-controls { display: none; }
 
 .tw-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 1.5rem; width: min(70rem, 100%); }
-.tw-stat-value { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-stat-value { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tw-accent); }
 .tw-stat-label { opacity: 0.75; margin-top: 0.3rem; }
 .tw-stat-partial { margin-top: 0.4rem; font-size: 0.75rem; color: var(--tw-warning); }
 
 .tw-group { margin: 1rem 0; }
-.tw-group-count { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-group-count { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tw-accent); }
 .tw-group-label { opacity: 0.75; margin-bottom: 0.8rem; }
 .tw-faces { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; max-width: 60rem; }
 .tw-face { width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover; background: var(--tw-surface); }
 
 .tw-hero { text-align: center; }
-.tw-hero-value { font-size: clamp(4rem, 16vw, 11rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.tw-hero-value { font-size: clamp(4rem, 16vw, 11rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: var(--tw-accent); }
 .tw-hero-label { font-size: clamp(1.2rem, 3vw, 2rem); opacity: 0.8; margin-top: 0.6rem; }
 .tw-hero-partial { margin-top: 0.4rem; font-size: 0.8rem; color: var(--tw-warning); }
 .tw-hero-supporting { display: flex; justify-content: center; flex-wrap: wrap; gap: 2.5rem; margin-top: 2.5rem; }
-.tw-hero-sub-value { font-size: clamp(1.6rem, 5vw, 2.6rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-hero-sub-value { font-size: clamp(1.6rem, 5vw, 2.6rem); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tw-accent); }
 .tw-hero-sub-label { opacity: 0.75; font-size: 0.95rem; }
 .tw-hero-sub-partial { margin-top: 0.2rem; font-size: 0.7rem; color: var(--tw-warning); }
 
