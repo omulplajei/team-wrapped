@@ -5,6 +5,7 @@ import datetime
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 
@@ -14,6 +15,8 @@ _KNOWN_KEYS = {
     "org", "repos", "groups", "since", "until", "metrics", "commit_branches", "bot_patterns",
     "aliases", "timezone", "curiosities", "avatars", "reviewer_pairs",
 }
+METRICS = ("commits", "pull_requests", "reviews", "comments")
+DEFAULT_BOT_PATTERNS = ("*[bot]",)
 _ORG = re.compile(r"[A-Za-z0-9-]+")
 _REPO = re.compile(r"[A-Za-z0-9._-]+")
 _GROUP = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
@@ -26,6 +29,12 @@ class Config:
     groups: dict = field(default_factory=dict)
     since: str | None = None
     until: str | None = None
+    metrics: list = field(default_factory=lambda: list(METRICS))
+    bot_patterns: list = field(default_factory=lambda: list(DEFAULT_BOT_PATTERNS))
+    aliases: dict = field(default_factory=dict)
+    timezone: str = "UTC"
+    top_n: int = 5                  # curiosities.top_n
+    download_avatars: bool = True   # avatars.download
 
 
 def _date(path, value) -> datetime.date | None:
@@ -41,6 +50,80 @@ def _date(path, value) -> datetime.date | None:
         except ValueError:
             pass
     raise LoadError(f"{path}: since/until must be a date like 2026-01-31")
+
+
+def _metrics(path, value) -> list:
+    if value is None:
+        return list(METRICS)
+    if not isinstance(value, list) or not value:
+        raise LoadError(f"{path}: metrics must be a non-empty list of {', '.join(METRICS)}")
+    unknown = [m for m in value if m not in METRICS]
+    if unknown:
+        raise LoadError(f"{path}: unknown metric(s) {unknown}; choose from {', '.join(METRICS)}")
+    return [m for m in METRICS if m in value]       # canonical order, duplicates collapse
+
+
+def _bot_patterns(path, value) -> list:
+    if value is None:
+        return list(DEFAULT_BOT_PATTERNS)
+    if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
+        raise LoadError(f"{path}: bot_patterns must be a list of non-empty strings")
+    return list(value)
+
+
+def _aliases(path, value) -> dict:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise LoadError(f"{path}: aliases must be a mapping of alias to canonical login")
+    for alias, canonical in value.items():
+        if not isinstance(alias, str) or not alias or not isinstance(canonical, str) or not canonical:
+            raise LoadError(f"{path}: aliases must map a login or email (text) to a login (text); "
+                            f"got {alias!r}: {canonical!r}")
+        if "@" in canonical:
+            raise LoadError(f"{path}: alias '{alias}' must map to a login, not an email")
+    return dict(value)
+
+
+def _timezone(path, value) -> str:
+    if value is None:
+        return "UTC"
+    try:
+        if not isinstance(value, str) or not value:
+            raise ValueError(value)
+        ZoneInfo(value)
+    except (ValueError, ZoneInfoNotFoundError, OSError) as error:
+        raise LoadError(f"{path}: timezone must be an IANA name like Europe/Bucharest "
+                        f"(got {value!r})") from error
+    return value
+
+
+def _top_n(path, section) -> int:
+    if section is None:
+        return 5
+    if not isinstance(section, dict):
+        raise LoadError(f"{path}: curiosities must be a mapping (top_n: 5)")
+    unknown = set(section) - {"top_n"}
+    if unknown:
+        raise LoadError(f"{path}: unknown curiosities key(s) {sorted(map(str, unknown))}")
+    value = section.get("top_n", 5)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise LoadError(f"{path}: curiosities.top_n must be an integer of at least 1")
+    return value
+
+
+def _download_avatars(path, section) -> bool:
+    if section is None:
+        return True
+    if not isinstance(section, dict):
+        raise LoadError(f"{path}: avatars must be a mapping (download: true)")
+    unknown = set(section) - {"download"}
+    if unknown:
+        raise LoadError(f"{path}: unknown avatars key(s) {sorted(map(str, unknown))}")
+    value = section.get("download", True)
+    if not isinstance(value, bool):
+        raise LoadError(f"{path}: avatars.download must be true or false")
+    return value
 
 
 def load_config(path) -> Config:
@@ -104,4 +187,10 @@ def load_config(path) -> Config:
         raise LoadError(f"{path}: since must not be after until")
     return Config(org=org, repos=list(repos), groups=groups,
                   since=since.isoformat() if since else None,
-                  until=until.isoformat() if until else None)
+                  until=until.isoformat() if until else None,
+                  metrics=_metrics(path, data.get("metrics")),
+                  bot_patterns=_bot_patterns(path, data.get("bot_patterns")),
+                  aliases=_aliases(path, data.get("aliases")),
+                  timezone=_timezone(path, data.get("timezone")),
+                  top_n=_top_n(path, data.get("curiosities")),
+                  download_avatars=_download_avatars(path, data.get("avatars")))

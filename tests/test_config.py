@@ -126,3 +126,55 @@ def test_errors_name_the_config_file(tmp_path):
     path = write(tmp_path, "org: o\nrepos: [a]\ngroups: {g: [b]}\n")
     with pytest.raises(LoadError, match="config.yml"):
         load_config(path)
+
+
+MIN = "org: o\nrepos: [a]\n"
+
+
+def test_new_keys_have_defaults(tmp_path):
+    config = load_config(write(tmp_path, MIN))
+    assert config.metrics == ["commits", "pull_requests", "reviews", "comments"]
+    assert config.bot_patterns == ["*[bot]"]
+    assert config.aliases == {}
+    assert config.timezone == "UTC"
+    assert config.top_n == 5
+    assert config.download_avatars is True
+
+
+def test_new_keys_are_read(tmp_path):
+    config = load_config(write(tmp_path, MIN + (
+        "metrics: [reviews, commits, commits]\nbot_patterns: ['*[bot]', 'robot-*']\n"
+        "aliases: {old-login: new-login, Dev@Example.com: new-login}\n"
+        "timezone: Europe/Bucharest\ncuriosities: {top_n: 3}\navatars: {download: false}\n")))
+    assert config.metrics == ["commits", "reviews"]         # canonical order, no duplicates
+    assert config.bot_patterns == ["*[bot]", "robot-*"]
+    assert config.aliases == {"old-login": "new-login", "Dev@Example.com": "new-login"}
+    assert config.timezone == "Europe/Bucharest"
+    assert config.top_n == 3
+    assert config.download_avatars is False
+
+
+@pytest.mark.parametrize("extra, message", [
+    ("metrics: [commits, deploys]", "unknown metric"),
+    ("metrics: []", "metrics"),
+    ("metrics: commits", "metrics"),
+    ("bot_patterns: '*[bot]'", "bot_patterns"),
+    ("bot_patterns: [1]", "bot_patterns"),
+    ("aliases: [a, b]", "aliases"),
+    ("aliases: {a: 1}", "aliases"),
+    ("aliases: {1: a}", "aliases"),
+    ("aliases: {a: b@example.com}", "not an email"),
+    ("timezone: Mars/Olympus", "timezone"),
+    ("timezone: 5", "timezone"),
+    ("curiosities: {top_n: 0}", "top_n"),
+    ("curiosities: {top_n: '3'}", "top_n"),
+    ("curiosities: {top_n: true}", "top_n"),
+    ("curiosities: {other: 1}", "unknown curiosities"),
+    ("curiosities: 3", "curiosities"),
+    ("avatars: {download: 'yes please'}", "avatars.download"),
+    ("avatars: {size: 1}", "unknown avatars"),
+    ("avatars: no", "avatars"),
+])
+def test_bad_new_keys_are_rejected(tmp_path, extra, message):
+    with pytest.raises(LoadError, match=message):
+        load_config(write(tmp_path, MIN + extra + "\n"))

@@ -78,7 +78,7 @@ team-wrapped/
 | `avatars.download` | download contributor avatars (default `true`) |
 | `reviewer_pairs` | author-to-reviewer pair statistic; default `false` |
 
-The loader (`config.py`) validates `org`, `repos`, `groups`, `since` and `until` today; the other keys are accepted and validated when the collector uses them.
+The loader (`config.py`) validates `org`, `repos`, `groups`, `since`, `until`, `metrics`, `bot_patterns`, `aliases`, `timezone`, `curiosities.top_n` and `avatars.download`; `commit_branches` and `reviewer_pairs` are accepted and validated when the collector uses them. In `bot_patterns`, `*` and `?` are wildcards and every other character, brackets included, is literal, so `*[bot]` matches `renovate[bot]` and not `ken-t`.
 
 `data-sample/config.yml` documents every option. Bad config (unknown metric, malformed dates, empty repo list) fails at startup with a clear message.
 
