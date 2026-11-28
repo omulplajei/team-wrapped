@@ -205,3 +205,36 @@ test("labels of an earlier stage move with their avatars when a later stage arri
   });
   assert.ok(labelMove.vars.scale < 1 && labelMove.vars.scale === faceMove.vars.scale);
 });
+
+test("long robot names wrap onto two lines instead of being cut, so similar names stay apart", () => {
+  const people = Array.from({ length: 331 }, (_, i) => person(`p${i}`, "human"))
+    .concat([1, 2, 3].map((n) => bot(`sample-svc-${n}-prod[bot]`, `sample-svc-${n}-prod`)));
+  const { container } = render(NAMED, dataFor(people), { clientWidth: 360, clientHeight: 600 });
+  const labels = find(container, "tw-cast-name");
+  assert.strictEqual(labels.length, 3);
+  labels.forEach((label) => {
+    const font = px(label.style.fontSize);
+    const lines = Math.round(px(label.style.height) / px(label.style.lineHeight));
+    assert.ok(lines === 1 || lines === 2);
+    const wrapped = presets.wrapLines(label.textContent, px(label.style.width), (t) => presets.estimateText(t, font));
+    assert.ok(wrapped.length <= lines, `${label.textContent} shows in full`);
+  });
+});
+
+test("a crowd and labelled robots settle without overlap: humans above the robot heading, robots below it", () => {
+  const people = Array.from({ length: 331 }, (_, i) => person(`p${i}`, "human"))
+    .concat(Array.from({ length: 11 }, (_, i) => bot(`sample-svc-${i}-prod[bot]`, `sample-svc-${i}-prod`)));
+  [[736, 850, 48], [736, 850, 96], [311, 520, 48]].forEach(([w, h, band]) => {
+    const defaults = { clientWidth: w, clientHeight: h, offsetHeight: band };
+    const { tl, container } = render(NAMED, dataFor(people), defaults);
+    const faces = find(container, "tw-cast-face");
+    const move = tl.calls.find((c) => c.kind === "to" && c.target[0] === faces[0] && c.vars.x);
+    const heading = find(container, "tw-cast-heading tw-cast-heading-late")[0];
+    const headingTop = px(heading.style.top);
+    const humans = faces.slice(0, 331).map((f, i) => centre(f).y + move.vars.y(i) + (px(f.style.width) * move.vars.scale) / 2);
+    assert.ok(Math.max(...humans) <= headingTop + 1e-6, `humans clear the heading in ${w}x${h}`);
+    const robots = faces.slice(331);
+    robots.forEach((f) => assert.ok(px(f.style.top) >= headingTop + band - 1e-6, `robots under the heading in ${w}x${h}`));
+    find(container, "tw-cast-name").forEach((l) => assert.ok(px(l.style.top) + px(l.style.height) <= h + 1e-6));
+  });
+});

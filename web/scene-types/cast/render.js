@@ -48,33 +48,33 @@ export default {
       return { heading, count, n };
     };
 
-    const first = stages.length > 0 ? makeHeading(stages[0], "tw-cast-heading") : null;
+    // Every heading is built up front showing its final count, so the page can measure it as it will end up.
+    stages.forEach((stage, i) => {
+      stage.title = makeHeading(stage, i === 0 ? "tw-cast-heading" : "tw-cast-heading tw-cast-heading-late");
+      stage.title.count.textContent = presets.format(stage.title.n);
+    });
+    const first = stages.length > 0 ? stages[0].title : null;
     if (first) wrap.append(first.heading);
     wrap.append(arena);
     container.append(wrap);
+    stages.slice(1).forEach((stage) => arena.append(stage.title.heading));
 
-    // The arena is measured once it is in the page; a stub without a layout gets a plain size.
+    // The arena and the headings are measured once they are in the page; a stub without a layout gets plain sizes.
     const W = arena.clientWidth > 0 ? arena.clientWidth : 1000;
     const H = arena.clientHeight > 0 ? arena.clientHeight : 520;
+    const bands = stages.map((stage, i) => (i === 0 ? 0 : Math.max(BAND, stage.title.heading.offsetHeight || 0)));
 
-    // Where each stage's avatars sit once stages 0..k are on screen: the space is shared by headcount
-    // (never less than a quarter each, so a few robots still get a visible row), with a heading band before each later stage.
-    const total = stages.reduce((sum, s) => sum + s.members.length, 0);
-    const layoutAt = (k) => {
-      const weights = stages.slice(0, k + 1).map((s) => Math.max(s.members.length, total * 0.25));
-      const weightSum = weights.reduce((a, b) => a + b, 0);
-      const free = H - k * BAND;
-      let top = 0;
-      return weights.map((weight, i) => {
-        if (i > 0) top += BAND;
-        const height = (free * weight) / weightSum;
-        const layout = presets.scatterLayout(stages[i].members.length, W, height, 120, 20, { labels: stages[i].names });
-        const placed = { size: layout.size, label: layout.label, bandTop: top - BAND,
-          points: layout.points.map((p) => ({ x: p.x, y: top + p.y })) };
-        top += height;
-        return placed;
-      });
-    };
+    // Name widths come from the page's own font when it can measure text, else from an estimate.
+    const canvas = document.createElement("canvas");
+    const pen = canvas && typeof canvas.getContext === "function" ? canvas.getContext("2d") : null;
+    const family = typeof getComputedStyle === "function" ? getComputedStyle(arena).fontFamily : "";
+    const measure = pen && family ? (text, font) => { pen.font = font + "px " + family; return pen.measureText(text).width; } : undefined;
+
+    // Where each stage's avatars sit once stages 0..k are on screen (see presets.castLayout).
+    const named = (stage) => stage.members.map((p) => p.name).filter((name) => typeof name === "string" && name !== "");
+    const layoutAt = (k) => presets.castLayout(W, H,
+      stages.slice(0, k + 1).map((s) => ({ count: s.members.length, names: s.names ? named(s) : undefined })),
+      { bands, measure });
     const layouts = stages.map((_, k) => layoutAt(k));
 
     // Stage i starts once stage i-1 has landed and the audience has had time to look.
@@ -110,12 +110,10 @@ export default {
         if (j > 0) tl.to(stages[j].title.heading, { y: to.bandTop - from.bandTop, duration: 1.0, ease: "power2.inOut" }, headingAt);
       }
 
-      stage.title = i === 0 ? first : makeHeading(stage, "tw-cast-heading tw-cast-heading-late");
       if (i === 0) {
         presets.fadeIn(tl, stage.title.heading, headingAt, 0.6);
       } else {
         stage.title.heading.style.top = own.bandTop + "px";
-        arena.append(stage.title.heading);
         // Rises from below the screen.
         tl.fromTo(stage.title.heading, { opacity: 0, y: H + 300 }, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, headingAt);
       }
@@ -148,7 +146,7 @@ export default {
           el.style.top = c.y + label.offset + "px";
           el.style.width = label.width + "px";
           el.style.height = label.height + "px";
-          el.style.lineHeight = label.height + "px";
+          el.style.lineHeight = label.line + "px";      // one or two lines (see presets.castLayout)
           el.style.fontSize = label.font + "px";
           arena.append(el);
           stage.labels.push({ el, idx });
