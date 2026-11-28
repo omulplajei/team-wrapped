@@ -14,13 +14,13 @@ Metric: any. Not time-bucketed.
 | `total` | all contributors |
 | `by_kind` | counts of `human`, `bot`, `unlinked` |
 | `list[].id` | sequential id (`c001`, ...) assigned after sorting; not derived from any email or name |
-| `list[].login` | GitHub login; absent for `unlinked` contributors |
-| `list[].name` | bots only: display name, the login without the trailing `[bot]` (`sample-bot[bot]` is `sample-bot`); humans and `unlinked` contributors never have one |
+| `list[].login` | GitHub login; absent for `unlinked` contributors and for bots matched by author name |
+| `list[].name` | bots only: display name, the `bot_names` entry for the login, else the login without the trailing `[bot]` (`sample-bot[bot]` is `sample-bot`); for a bot without a login (an unlinked author whose name matched `bot_patterns`, such as `Deployment Script`), that service name. Humans and `unlinked` contributors never have one |
 | `list[].avatar_file` | local avatar path (placeholder for unlinked) |
 | `list[].kind` | `human`, `bot` or `unlinked` |
 | `list[].first_activity`, `last_activity` | dates |
 
-Contributors are identified by login (aliases applied), then email, then name; the three kinds never merge by accident, and an email alias applies only to a record without a login. The dataset is partial when any in-scope repository's status for an enabled metric is not complete.
+Contributors are identified by login (aliases applied), then email, then name; the three kinds never merge by accident, and an email alias applies only to a record without a login. Commit co-authors (`Co-authored-by:` trailers, for example AI coding tools) count as contributors exactly like commit authors, so a person who only co-authors is a contributor too; co-authors do not change any other dataset. The dataset is partial when any in-scope repository's status for an enabled metric is not complete.
 
 ## repos
 Metric: any. Not time-bucketed. A repository is "touched" when it has at least one commit (author date), pull request (created or merged date), review (submitted date) or comment (created date) inside the window, from any author including bots, among the enabled metrics. `total` equals the length of `list`, which is ordered alphabetically by `name`. The dataset is partial when any in-scope repository's status for an enabled metric is not complete. An empty list counts as missing data for scenes that require `list.name`, so scripts mark such scenes `on_missing_data: skip`.

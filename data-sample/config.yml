@@ -53,7 +53,11 @@ group_info:                       # optional; label defaults to the group name, 
 # metrics: [commits, pull_requests, reviews, comments]
 # commit_branches: default        # `collect` supports the default branch only; `all` is rejected for now
 # timezone: UTC                   # also how `since`/`until` are read when collecting
-# bot_patterns: ["*[bot]"]
+# bot_patterns: ["*[bot]"]       # matched against the login, or the author name when there is none;
+#                                 # `*` and `?` are wildcards, case-insensitive. Commit co-authors count too, so
+#                                 # AI coding tools and service identities can be declared bots, for example:
+# bot_patterns: ["*[bot]", claude, cursoragent, "Deployment Script", "Jenkins *"]
+# bot_names: {claude: Claude, cursoragent: Cursor}   # bot login -> display name (default: login without [bot])
 # aliases: {old-login: new-login}
 # curiosities: {top_n: 5}
 # avatars: {download: true}

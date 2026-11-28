@@ -127,13 +127,16 @@ A plugin declares its `name`, a `fetch(repo, since, checkpoint)` generator that 
 
 Built during collection from the author fields of all four metrics and deduplicated across all repos. Written to `data/derived/contributors.json`.
 
+**Co-authors.** Every co-author of an in-window commit (`co_authors`, section 5.1) is a contributor exactly like the commit's author: the same identity, alias and bot rules, the commit's repo and groups, and the commit's authored date for first and last activity. So an AI coding tool that co-authors commits (the `claude`, `cursoragent` or `Copilot` accounts) appears as a contributor, a bot when `bot_patterns` match it, and a person who only ever co-authors still counts. Co-authors change nothing else: commit counts, lines, curiosities and the summary stay based on the commit's author.
+
 The purpose is to show **how many contributors there are**, not to profile individuals. No per-person activity counts are stored.
 
-**Fields per contributor:** stable id, `login` (nullable), `name` (bots only: the login without the trailing `[bot]`, so `sample-bot[bot]` is `sample-bot`; humans and unlinked contributors never get a name, so no personal name reaches `derived/`), `avatar_file` (path in `data/avatars/`), `kind` (`human`, `bot` or `unlinked`), the repos and groups they touched, first and last activity dates.
+**Fields per contributor:** stable id, `login` (nullable), `name` (bots only: the `bot_names` entry for the login, else the login without the trailing `[bot]`, so `sample-bot[bot]` is `sample-bot`; for a bot without a login, the author name that matched `bot_patterns`; humans and unlinked contributors never get a name, so no personal name reaches `derived/`), `avatar_file` (path in `data/avatars/`), `kind` (`human`, `bot` or `unlinked`), the repos and groups they touched, first and last activity dates.
 
 **Unlinked commit authors.** A commit author whose email is not tied to a GitHub account has no login and no avatar. These are counted as contributors:
 - Identity key: the author email if present, otherwise the author name. Keys are type-prefixed (`login:`, `email:`, `name:`), so an unlinked author named like a login never merges into that login. `aliases` map an alias to a canonical login (an alias that is a login, or an email for a record that has no login) and merge the unlinked author into the linked contributor.
 - `kind` is `unlinked`, and the avatar is a shared placeholder.
+- Service identities. `bot_patterns` are also matched (case-insensitively, whole name) against the author names of a contributor without a login, so a commit author such as `Deployment Script` or `Jenkins CI` can be declared a bot. Such a contributor gets `kind: bot`, no login, the placeholder avatar and `name` = the matched author name (a service name, not a person). An unlinked contributor whose names match no pattern never gets a name. A contributor with a login is matched by its login only, never by its author name.
 - The email is never written to `derived/`. The id is sequential (`c001`, `c002`, ...), assigned after the deterministic sort (kind, login, key); nothing in it is derived from the email or name. The raw commit files keep the email, since they are git-ignored.
 
 **Counts in the output.** Total contributors, with the breakdown human, bot and unlinked, overall, per group and per repo. Consumers that want a "humans only" total can exclude bots.

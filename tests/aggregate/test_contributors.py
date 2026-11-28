@@ -234,3 +234,109 @@ def test_bots_get_a_display_name_and_people_never_do(fx):
     bot = next(c for c in entries if c.get("login") == "sample-bot[bot]")
     assert list(bot)[:4] == ["id", "login", "name", "kind"]
     assert "Ada Lovelace" not in json.dumps(entries) and "Nobody Known" not in json.dumps(entries)
+
+
+def co(login=None, name=None, email=None):
+    return {"login": login, "name": name, "email": email}
+
+
+AI_CONFIG = CONFIG + """bot_patterns: ['*[bot]', claude, cursoragent, 'Deployment *', 'jenkins ci']
+bot_names: {claude: Claude, cursoragent: Cursor}
+"""
+
+
+def test_co_authors_are_contributors_like_the_primary_author(fx):
+    fx.config(CONFIG)
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("1", login="ada-dev", at="2026-03-14T09:30:00Z", co_authors=[co("grace-codes", "Grace", "g@example.com")]),
+    ])
+    fx.raw("gamma-docs", "commits.jsonl", [
+        commit("2", login="ada-dev", at="2026-05-01T09:30:00Z", co_authors=[co("grace-codes", "Grace", "g@example.com")]),
+    ])
+    scopes = build(fx)
+    grace = by_login(scopes["all"])["grace-codes"]
+    assert grace["kind"] == "human" and "name" not in grace              # a co-author-only human still counts
+    assert grace["repos"] == ["alpha-api", "gamma-docs"] and grace["groups"] == ["alpha", "gamma"]
+    assert (grace["first_activity"], grace["last_activity"]) == ("2026-03-14", "2026-05-01")
+    assert sorted(by_login(scopes["group:gamma"])) == ["ada-dev", "grace-codes"]
+    assert scopes["all"]["by_kind"] == {"human": 2, "unlinked": 0, "bot": 0}
+
+
+def test_co_authors_outside_the_window_or_of_a_disabled_metric_do_not_count(fx):
+    fx.config(CONFIG + "since: 2026-02-01\n")
+    fx.raw("alpha-api", "commits.jsonl", [commit("1", login="ada-dev", at="2026-01-10T09:00:00Z",
+                                                 co_authors=[co("early-pair")])])
+    assert build(fx)["all"]["total"] == 0
+    fx.config(CONFIG + "metrics: [reviews]\n")
+    assert build(fx)["all"]["total"] == 0
+
+
+def test_ai_co_authors_matched_by_bot_patterns_are_bots_with_their_configured_names(fx):
+    fx.config(AI_CONFIG)
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("1", login="ada-dev", co_authors=[co("claude", "Claude", "c@example.com")]),
+        commit("2", login="grace-codes", co_authors=[co("Cursoragent", "Cursor Agent", "cursor@example.com"),
+                                                     co("Copilot[bot]", "Copilot", "copilot@example.com")]),
+    ])
+    scope = build(fx)["all"]
+    names = {c["login"]: (c["kind"], c.get("name")) for c in scope["list"]}
+    assert names == {"ada-dev": ("human", None), "grace-codes": ("human", None), "claude": ("bot", "Claude"),
+                     "Cursoragent": ("bot", "Cursor"),          # bot_names keys match case-insensitively
+                     "Copilot[bot]": ("bot", "Copilot")}       # not in bot_names: the login without [bot]
+    assert scope["by_kind"] == {"human": 2, "unlinked": 0, "bot": 3}
+
+
+def test_bot_names_only_name_bots(fx):
+    fx.config(CONFIG + "bot_names: {ada-dev: Ada Lovelace, 'sample-bot[bot]': Sample Helper}\n")
+    fx.raw("alpha-api", "commits.jsonl", [commit("1", login="ada-dev"), commit("2", login="sample-bot[bot]")])
+    entries = by_login(build(fx)["all"])
+    assert "name" not in entries["ada-dev"] and entries["ada-dev"]["kind"] == "human"
+    assert entries["sample-bot[bot]"]["name"] == "Sample Helper"
+
+
+def test_unlinked_service_identities_matched_by_name_are_bots_named_after_the_service(fx):
+    fx.config(AI_CONFIG)
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("1", login=None, email="deploy@example.com", name="Deployment Script"),
+        commit("2", login="ada-dev", co_authors=[co(None, "Jenkins CI", "jenkins@example.com")]),
+        commit("3", login=None, email="person@example.com", name="Private Person"),
+        commit("4", login=None, email="other@example.com", name="Ada Deployment"),     # patterns match the whole name
+    ])
+    scope = build(fx)["all"]
+    assert scope["by_kind"] == {"human": 1, "unlinked": 2, "bot": 2}
+    bots = [c for c in scope["list"] if c["kind"] == "bot"]
+    assert sorted(c["name"] for c in bots) == ["Deployment Script", "Jenkins CI"]
+    assert all("login" not in c and c["avatar_file"] == "avatars/placeholder.png" for c in bots)
+    assert list(bots[0])[:3] == ["id", "name", "kind"]
+    unlinked = [c for c in scope["list"] if c["kind"] == "unlinked"]
+    assert all("name" not in c for c in unlinked)
+    text = json.dumps(scope)
+    assert "Private Person" not in text and "Ada Deployment" not in text and "@" not in text
+
+
+def test_a_login_is_never_matched_by_its_author_name(fx):
+    fx.config(AI_CONFIG)
+    fx.raw("alpha-api", "commits.jsonl", [commit("1", login="ops-person", name="Deployment Script")])
+    (entry,) = build(fx)["all"]["list"]
+    assert entry["kind"] == "human" and "name" not in entry
+
+
+def test_aliases_apply_to_co_authors(fx):
+    fx.config(CONFIG + "aliases:\n  ada-old: ada-dev\n  ada@home.example.com: ada-dev\n")
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("1", login="grace-codes", co_authors=[co("Ada-Old", "Ada", "a@example.com")]),
+        commit("2", login="grace-codes", co_authors=[co(None, "Ada", "Ada@Home.example.com")]),
+    ])
+    fx.raw("gamma-docs", "commits.jsonl", [commit("3", login="ada-dev")])
+    scope = build(fx)["all"]
+    assert sorted(by_login(scope)) == ["ada-dev", "grace-codes"]
+    assert by_login(scope)["ada-dev"]["repos"] == ["alpha-api", "gamma-docs"]
+
+
+def test_unlinked_co_authors_merge_with_unlinked_authors_by_email(fx):
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("1", login=None, email="pair@example.com", name="Pair"),
+        commit("2", login="ada-dev", co_authors=[co(None, "Pair Programmer", "PAIR@example.com"), "bad", 5]),
+        commit("3", login="ada-dev", co_authors="not a list"),
+    ])
+    assert build(fx)["all"]["by_kind"] == {"human": 1, "unlinked": 1, "bot": 0}

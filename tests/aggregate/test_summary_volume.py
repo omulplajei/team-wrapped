@@ -1,5 +1,6 @@
 from aggregate_helpers import ALL_COMPLETE, comment, commit, pull_request, review
 
+from team_wrapped.aggregate.curiosities import build_curiosities
 from team_wrapped.aggregate.delivery_volume import build_delivery_volume
 from team_wrapped.aggregate.summary import build_summary
 
@@ -135,3 +136,21 @@ def test_cheap_then_enriched_version_of_a_commit_counts_once(fx):
     fx.raw("alpha-api", "commits.jsonl", [commit("a"), commit("a", enriched=True, additions=3, deletions=1, files_changed=1)])
     scopes, partial = build_delivery_volume(fx.context())
     assert scopes["all"]["lines"]["total_additions"] == 3 and partial == []
+
+
+def test_co_authors_change_no_commit_count_lines_or_curiosity(fx):
+    setup(fx)
+    pair = [{"login": "claude", "name": "Claude", "email": "c@example.com"},
+            {"login": None, "name": "Pair", "email": "pair@example.com"}]
+    records = [commit("a", enriched=True, additions=40, deletions=4, files_changed=2),
+               commit("b", at="2026-06-01T23:30:00Z", enriched=True, additions=7, deletions=1, files_changed=1),
+               commit("c", login="grace-codes", enriched=True, additions=3, deletions=3, files_changed=1)]
+    fx.raw("alpha-api", "commits.jsonl", records)
+
+    def built():
+        ctx = fx.context()
+        return build_summary(ctx), build_delivery_volume(ctx), build_curiosities(ctx)
+    before = built()
+    fx.raw("alpha-api", "commits.jsonl", [{**r, "co_authors": pair} for r in records])
+    assert built() == before
+    assert before[0][0]["all"]["totals"]["commits"] == 3
