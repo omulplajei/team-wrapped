@@ -502,7 +502,10 @@ export default {
         l.label.style.left = c.x + "px";
         l.label.style.top = c.y - R * 0.74 + "px";
         l.label.style.maxWidth = R * 1.1 + "px";     // the hexagon is 1.15 R wide where the label starts
-        l.name.style.fontSize = nameFont.toFixed(1) + "px";
+        // Shrink the name just enough for its longest word to fit the label width (about 0.62 em per letter plus the padding).
+        const longest = String(l.name.textContent || "").split(/[\s-]+/).reduce((m, w) => Math.max(m, w.length), 1);
+        const fitFont = (R * 1.1) / (longest * 0.62 + 0.8);
+        l.name.style.fontSize = Math.max(7, Math.min(nameFont, fitFont)).toFixed(1) + "px";
         l.count.style.fontSize = countFont.toFixed(1) + "px";
       });
       draw(lastTime);
