@@ -85,13 +85,32 @@ PYTHONPATH=src python3 -m team_wrapped aggregate --data data
 | `--since YYYY-MM-DD`, `--until YYYY-MM-DD` | the window for this run only (default: the config's). Dates are inclusive and read in the config `timezone` |
 | `--max-requests N` | stop cleanly after N `gh` calls |
 | `--no-avatars` | skip avatar downloads (or set `avatars: {download: false}`) |
-| `--dry-run` | print the plan and make no API calls |
+| `--dry-run` | print the plan and make no API calls: the window, then per repository and metric `full` or `incremental from <date>` |
+| `--full` | ignore the checkpoints and fetch the whole window (new checkpoints are written when it completes) |
+| `--overlap-days N` | how many days before the last covered commit time an incremental run fetches again (default 7, 0 or more) |
 
-What it writes, per repository: `data/raw/<repo>/commits.jsonl`, `pull_requests.jsonl`, `reviews.jsonl`, `comments.jsonl` (section 5.1 of the spec), `status.json` (`complete`, `partial` or `failed` per metric) and `status-detail.json` (reason, collection time, record count). Commits come from the default branch; commit and PR sizes come with the same queries, so there is no separate enrichment pass. Avatars go to `data/avatars/` (from `https://github.com/<login>.png`); logins whose download failed use the placeholder and are listed in `data/raw/avatars-failed.json`. Raw commit records keep author names and emails: they stay in the git-ignored `data/` and never reach `derived/`.
+What it writes, per repository: `data/raw/<repo>/commits.jsonl`, `pull_requests.jsonl`, `reviews.jsonl`, `comments.jsonl` (section 5.1 of the spec), `status.json` (`complete`, `partial` or `failed` per metric), `status-detail.json` (reason, collection time, record count, full or incremental) and `checkpoint.json` (what each metric has collected, for incremental runs; the aggregator ignores it). Commits come from the default branch; commit and PR sizes come with the same queries, so there is no separate enrichment pass. Avatars go to `data/avatars/` (from `https://github.com/<login>.png`); logins whose download failed use the placeholder and are listed in `data/raw/avatars-failed.json`. Raw commit records keep author names and emails: they stay in the git-ignored `data/` and never reach `derived/`.
 
 Each repository and metric is written as soon as it finishes. A missing or inaccessible repository is marked `failed` and the run continues; the exit code is 1 when anything failed. Transient errors (5xx, network, secondary rate limits) are retried with backoff. When the hourly rate limit or `--max-requests` is reached, the run stops cleanly: the unit in progress is `partial` with what was fetched, later units are left as they were, and the message says when to resume ("resume after HH:MM").
 
-Re-running is safe: records are merged by key, so nothing is duplicated and records fetched earlier are kept. A run always fetches the whole window again (incremental fetching is not built yet), and a `partial` unit is fetched again in full.
+Re-running is safe: records are merged by key, so nothing is duplicated, a record fetched again (a pull request that has since been merged or reviewed) replaces the stored one, and records not fetched again are kept.
+
+### Incremental runs
+
+The first run fetches the whole window. Every repository and metric that ends `complete` then records a checkpoint (`data/raw/<repo>/checkpoint.json`: when it synced, the window it collected, and how far the data is complete, never past the start of that run), and the next run of the same command fetches only the delta:
+
+```bash
+PYTHONPATH=src python3 -m team_wrapped collect --data data        # today: 2026-01-01 .. now, in full
+# two weeks later, the same command:
+PYTHONPATH=src python3 -m team_wrapped collect --data data        # only what changed since; progress says "since <date>"
+```
+
+- **Commits** are fetched from the last covered time minus `--overlap-days` (7 by default: a late push or a rebase keeps the old commit date) to the window end. Moving `since` earlier also fetches the missing start; a window that does not touch what was collected is fetched in full.
+- **Pull requests, reviews and comments** come from one search, so re-fetching a pull request refreshes its reviews and comments. A run fetches those updated since the last sync minus a day (any activity, including on open pull requests, bumps the update time) plus those created after the previous window end when `until` moved later. Moving `since` earlier than the checkpoint's fetches the whole window again (with a notice).
+- A `partial`, `failed` or stopped unit keeps its previous checkpoint, so the next run fetches that delta again. A checkpoint that cannot be read is reported and ignored (that metric is fetched in full).
+- `status` shows each metric's last sync and covered range.
+
+Incremental runs do not notice what disappeared: deleted or force-pushed-away commits and deleted pull requests stay in the raw files. Run with `--full` now and then to re-fetch every record of the window. Because records are merged by key, even `--full` keeps records of deleted items: delete `data/raw/<repo>/` before it for a clean copy.
 
 ## Aggregating raw data
 
