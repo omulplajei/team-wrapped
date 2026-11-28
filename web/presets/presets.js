@@ -73,11 +73,109 @@
   }
 
   // Name label metrics for an avatar of `size`: one line, font scaling with the avatar (never under 9px),
-  // 1.6 avatars wide, starting `offset` below the avatar centre.
-  function nameLabel(size) {
-    const font = Math.max(9, Math.round(size * 0.16 * 10) / 10);
+  // 1.6 avatars wide, starting `offset` below the avatar centre. `line` is the line height, `lines` the line count.
+  // `minFont` lowers the 9px floor for a crowd that would not fit otherwise.
+  function nameLabel(size, minFont = 9) {
+    const font = Math.max(minFont, Math.round(size * 0.16 * 10) / 10);
     const gap = Math.max(2, size * 0.05);
-    return { font, width: size * 1.6, height: font * 1.3, offset: size / 2 + gap };
+    return { font, width: size * 1.6, height: font * 1.3, offset: size / 2 + gap, lines: 1, line: font * 1.3 };
+  }
+
+  // A generous guess at how wide `text` is at `font` px, for when the page cannot measure it.
+  function estimateText(text, font) {
+    return String(text).length * font * 0.6;
+  }
+
+  // How a browser wraps `text` into lines at most `maxWidth` wide (text widths from `measure(text)`): it breaks after
+  // a space or a hyphen (not one before a digit, as in "svc-1"), and splits a word only when it cannot fit on a line.
+  function wrapLines(text, maxWidth, measure) {
+    const str = String(text);
+    const segments = [];
+    let seg = "";
+    for (let i = 0; i < str.length; i++) {
+      seg += str[i];
+      const next = str[i + 1];
+      if (next !== undefined && (str[i] === " " || (str[i] === "-" && !/[0-9]/.test(next)))) {
+        segments.push(seg);
+        seg = "";
+      }
+    }
+    if (seg !== "") segments.push(seg);
+    const fits = (t) => measure(t.trimEnd()) <= maxWidth;
+    const lines = [];
+    let line = "";
+    segments.forEach((part) => {
+      if (fits(line + part)) { line += part; return; }
+      if (line !== "") lines.push(line.trimEnd());
+      line = "";
+      if (fits(part)) { line = part; return; }
+      for (const ch of part) {
+        if (line !== "" && !fits(line + ch)) { lines.push(line); line = ""; }
+        line += ch;
+      }
+    });
+    lines.push(line.trimEnd());
+    return lines;
+  }
+
+  // The label shapes worth trying for an avatar of `size` whose labels show `names`: one line as wide as the
+  // longest name, or two lines as wide as the longest name needs to wrap into two; never under 1.6 avatars wide
+  // (as nameLabel), never wider than the area (a name too long even then is cut at two lines).
+  function labelShapes(size, names, areaWidth, measure, cache, minFont) {
+    const base = nameLabel(size, minFont);
+    const font = base.font;
+    const PAD = 2;              // slack for rounding between the measured and the drawn text
+    const widthFor = (name, lines) => {
+      const key = lines + "|" + font + "|" + name;
+      if (!cache.has(key)) {
+        const m = (t) => measure(t, font);
+        const one = Math.ceil(m(name)) + PAD;
+        let lo = 1;
+        let hi = one;
+        if (lines > 1) {
+          while (lo < hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            if (wrapLines(name, mid - PAD, m).length <= lines) hi = mid; else lo = mid + 1;
+          }
+        }
+        cache.set(key, lines > 1 ? hi : one);
+      }
+      return cache.get(key);
+    };
+    const need = (lines) => names.reduce((w, name) => Math.max(w, widthFor(name, lines)), 0);
+    const shape = (width, lines) => ({ ...base, width, lines, height: base.line * lines });
+    const shapes = [];
+    const one = Math.max(base.width, need(1));
+    if (one <= areaWidth) shapes.push(shape(one, 1));
+    if (one > base.width) shapes.push(shape(Math.min(areaWidth, Math.max(base.width, need(2))), 2));
+    return shapes;
+  }
+
+  // How `count` avatars of `size` best sit in a grid `width` wide: the cell, columns, rows and the height needed.
+  // `labels` is false, true (plain one-line labels) or the names to fit (see labelShapes). Null if nothing fits across.
+  function arrange(count, width, size, labels, measure, cache, minFont = 9) {
+    const boxes = [];
+    if (!labels) {
+      boxes.push({ w: size, h: size, cellW: size * 1.25, cellH: size * 1.25 });
+    } else {
+      const shapes = Array.isArray(labels) ? labelShapes(size, labels, width, measure, cache, minFont)
+        : [nameLabel(size, minFont)];
+      shapes.forEach((label) => {
+        const w = Math.max(label.width, size);
+        const h = label.offset + label.height + size / 2;
+        boxes.push({ w, h, cellW: w + size * 0.2, cellH: h + size * 0.2, label });
+      });
+    }
+    let best = null;
+    boxes.forEach((b) => {
+      if (b.w > width + 1e-9) return;
+      const cellW = Math.min(b.cellW, width);       // a single column never pokes out of the area
+      const cols = Math.max(1, Math.floor(width / cellW + 1e-9));
+      const rows = Math.ceil(count / cols);
+      const need = rows * b.cellH;
+      if (!best || need < best.need - 1e-9) best = { ...b, cellW, cols, rows, need };
+    });
+    return best;
   }
 
   // Scatters `count` avatars loosely over width x height without overlap: a grid of roomy cells, each avatar
@@ -85,28 +183,25 @@
   // Deterministic, and the avatar size shrinks as the count grows so large teams fit.
   // With `{labels: true}` each cell also holds a name label under its avatar (see nameLabel): cells grow to fit
   // avatar plus label, so no avatar or label overlaps another, and the result carries `label` metrics.
+  // With `{labels: [names]}` the labels are sized so every name is readable, on one line or wrapped onto two
+  // (see labelShapes); `measure(text, font)` gives text widths (default estimateText).
   function scatterLayout(count, width, height, maxSize = 120, minSize = 20, options = {}) {
     if (!(count > 0)) return { size: 0, points: [] };
-    const labels = Boolean(options && options.labels);
-    // The box one item needs (avatar, plus its label when labelled) and the cell it is jittered in.
-    const box = (s) => {
-      if (!labels) return { w: s, h: s, cellW: s * 1.25, cellH: s * 1.25 };
-      const label = nameLabel(s);
-      const w = label.width;
-      const h = label.offset + label.height + s / 2;
-      return { w, h, cellW: w + s * 0.2, cellH: h + s * 0.2 };
-    };
+    const labels = options && options.labels ? options.labels : false;
+    const measure = (options && options.measure) || estimateText;
+    const cache = (options && options.cache) || new Map();
+    const minFont = (options && options.minFont) || 9;
+    const fitAt = (s, w = width) => arrange(count, w, s, labels, measure, cache, minFont);
     let size = minSize;
-    let cols = 1;
-    let rows = count;
-    for (let s = maxSize; s >= minSize; s -= 2) {
-      const b = box(s);
-      const c = Math.max(1, Math.floor(width / b.cellW));
-      const r = Math.ceil(count / c);
-      if (r * b.cellH <= height) { size = s; cols = c; rows = r; break; }
-      if (s - 2 < minSize) { size = minSize; cols = c; rows = r; }
+    let fit = null;
+    for (let s = maxSize; ; s -= 2) {
+      if (s <= minSize) s = minSize;
+      const f = fitAt(s);
+      if (f && f.need <= height + 1e-9) { size = s; fit = f; break; }
+      if (s === minSize) break;
     }
-    const { w, h, cellW, cellH } = box(size);
+    if (!fit) fit = fitAt(size) || fitAt(size, Infinity);
+    const { w, h, cellW, cellH, cols, rows } = fit;
     const total = cols * rows;
     const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
     let step = Math.max(1, Math.round(total * 0.618));
@@ -123,7 +218,59 @@
         y: top + (Math.floor(at / cols) + 0.5) * cellH + jitter(i, 40503, cellH - h) - (h - size) / 2,
       });
     }
-    return labels ? { size, points, label: nameLabel(size) } : { size, points };
+    return labels ? { size, points, label: fit.label } : { size, points };
+  }
+
+  // Lays out the cast scene's stages top to bottom in width x height, with a heading band before every stage
+  // but the first. `stages` is [{count, names?}] (names: the labels to show, see scatterLayout); `options.bands[i]`
+  // is the height of the band before stage i (default 48). The height is shared by headcount (never less than
+  // a quarter of the team each, so a few robots still get a visible row); when a stage would not fit its share,
+  // every stage gets the room it needs at the largest common avatar size instead (down to `options.floor`, 12px;
+  // then with 8px labels; then, rather than overlap, smaller still), and the rest is shared out.
+  // Returns per stage {size, points, label?, bandTop} in area coordinates.
+  function castLayout(width, height, stages, options = {}) {
+    const maxSize = options.maxSize || 120;
+    const minSize = options.minSize || 20;
+    const floor = options.floor || 12;
+    const measure = options.measure || estimateText;
+    const cache = new Map();
+    const bands = Array.isArray(options.bands) ? options.bands : [];
+    const band = (i) => (i === 0 ? 0 : typeof bands[i] === "number" ? bands[i] : 48);
+    const labels = (st) => (Array.isArray(st.names) ? st.names : st.names ? true : false);
+    const total = stages.reduce((sum, st) => sum + st.count, 0);
+    const weights = stages.map((st) => Math.max(st.count, total * 0.25));
+    const weightSum = weights.reduce((a, b) => a + b, 0) || 1;
+    const free = height - stages.reduce((sum, _, i) => sum + band(i), 0);
+    const needAt = (i, s, minFont) => {
+      if (!(stages[i].count > 0)) return 0;
+      const f = arrange(stages[i].count, width, s, labels(stages[i]), measure, cache, minFont);
+      return f ? f.need : Infinity;
+    };
+    const needs = (s, minFont) => stages.map((_, i) => needAt(i, s, minFont));
+    const sum = (list) => list.reduce((a, b) => a + b, 0);
+    let heights = weights.map((w) => (free * w) / weightSum);
+    let least = minSize;
+    let minFont = 9;
+    if (!needs(minSize, minFont).every((n, i) => n <= heights[i] + 1e-9)) {
+      // Largest common size that fits, trying the usual label floor before the smaller one; last resort: the smallest.
+      const tries = [];
+      for (let s = maxSize; s >= floor; s--) tries.push([s, 9]);
+      for (let s = floor; s >= 4; s--) tries.push([s, 8]);
+      const found = tries.find(([s, f]) => sum(needs(s, f)) <= free + 1e-9) || tries[tries.length - 1];
+      [least, minFont] = found;
+      const room = needs(least, minFont).map((n) => Math.min(n, free));
+      const spare = Math.max(0, free - sum(room));
+      heights = room.map((n, i) => n + (spare * weights[i]) / weightSum);
+    }
+    let top = 0;
+    return stages.map((st, i) => {
+      top += band(i);
+      const layout = scatterLayout(st.count, width, heights[i], maxSize, Math.min(minSize, least),
+        { labels: labels(st), measure, cache, minFont });
+      const placed = { ...layout, bandTop: top - band(i), points: layout.points.map((p) => ({ x: p.x, y: top + p.y })) };
+      top += heights[i];
+      return placed;
+    });
   }
 
   // Schedules the main count and the tail beats on `tl`, calling show(v) whenever the value changes.
@@ -274,7 +421,7 @@
     });
   }
 
-  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, dropIn, scatterLayout, nameLabel, countUp, wheelPositions, odometer, fitFolderSize, formatDate, formatMonth, fillTemplate };
+  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, dropIn, scatterLayout, nameLabel, estimateText, wrapLines, castLayout, countUp, wheelPositions, odometer, fitFolderSize, formatDate, formatMonth, fillTemplate };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

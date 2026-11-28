@@ -453,6 +453,123 @@ test("scatterLayout without labels is unchanged and has no label metrics", () =>
   assert.strictEqual(plain.label, undefined);
 });
 
+test("wrapLines breaks after spaces and hyphens (not before a digit), and splits a word only when it cannot fit", () => {
+  const measure = (text) => text.length * 10;      // 10px a character
+  assert.deepStrictEqual(presets.wrapLines("sample-svc-1-prod", 1000, measure), ["sample-svc-1-prod"]);
+  assert.deepStrictEqual(presets.wrapLines("sample-svc-1-prod", 120, measure), ["sample-", "svc-1-prod"]);
+  assert.deepStrictEqual(presets.wrapLines("build bot", 60, measure), ["build", "bot"]);
+  assert.deepStrictEqual(presets.wrapLines("abcdefghij", 40, measure), ["abcd", "efgh", "ij"]);
+  assert.deepStrictEqual(presets.wrapLines("", 40, measure), [""]);
+});
+
+test("scatterLayout with names keeps one line when the names fit, as with plain labels", () => {
+  const plain = presets.scatterLayout(3, 1000, 260, 120, 20, { labels: true });
+  const named = presets.scatterLayout(3, 1000, 260, 120, 20, { labels: ["sample-bot", "helper-bot", "lint-bot"] });
+  assert.deepStrictEqual(named.points, plain.points);
+  assert.strictEqual(named.size, plain.size);
+  assert.strictEqual(named.label.lines, 1);
+  assert.strictEqual(named.label.width, plain.label.width);
+});
+
+test("scatterLayout with long names wraps them onto two lines so similar names stay readable", () => {
+  const names = ["sample-svc-1-prod", "sample-svc-2-prod", "sample-svc-3-prod", "sample-very-long-automation-account-name"];
+  [[800, 160], [375, 200], [1400, 120]].forEach(([w, h]) => {
+    const layout = presets.scatterLayout(names.length, w, h, 120, 12, { labels: names });
+    const { label } = layout;
+    assert.ok(label.lines >= 1 && label.lines <= 2);
+    assert.ok(Math.abs(label.height - label.lines * label.line) < 1e-9);
+    names.forEach((name) => {
+      const lines = presets.wrapLines(name, label.width, (t) => presets.estimateText(t, label.font));
+      assert.ok(lines.length <= label.lines, `${name} fits in ${label.lines} line(s) at ${w}x${h}`);
+    });
+    const boxes = labelledBoxes(layout);
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      assert.ok(b.x0 >= -1e-9 && b.x1 <= w + 1e-9 && b.y0 >= -1e-9 && b.y1 <= h + 1e-9, `box ${i} inside ${w}x${h}`);
+      for (let j = i + 1; j < boxes.length; j++) {
+        if (Math.floor(i / 2) !== Math.floor(j / 2)) assert.ok(!overlaps(boxes[i], boxes[j]), `${i}/${j} at ${w}x${h}`);
+      }
+    }
+  });
+});
+
+test("scatterLayout labels a name too long for two lines even at the smallest font across the whole width", () => {
+  const layout = presets.scatterLayout(1, 100, 200, 120, 12, { labels: ["x".repeat(200)] });
+  assert.strictEqual(layout.label.lines, 2);
+  assert.ok(layout.label.width <= 100 + 1e-9);
+});
+
+// The cast scene with every stage on screen: humans, a heading band, then labelled robots.
+const castBoxes = (layouts, bands) => layouts.flatMap((stage, i) => {
+  const out = stage.points.map((p) => ({ kind: "avatar", stage: i,
+    x0: p.x - stage.size / 2, x1: p.x + stage.size / 2, y0: p.y - stage.size / 2, y1: p.y + stage.size / 2 }));
+  if (stage.label) {
+    const l = stage.label;
+    stage.points.forEach((p) => out.push({ kind: "label", stage: i,
+      x0: p.x - l.width / 2, x1: p.x + l.width / 2, y0: p.y + l.offset, y1: p.y + l.offset + l.height }));
+  }
+  if (i > 0) out.push({ kind: "band", stage: i, x0: 0, x1: Infinity, y0: stage.bandTop, y1: stage.bandTop + bands[i] });
+  return out;
+});
+const robotNames = (n) => Array.from({ length: n }, (_, i) =>
+  [`sample-svc-${i}-prod`, "sample-release-helper", "sample-dependency-updater", "qa", `sample-very-long-automation-name-${i}`][i % 5]);
+
+test("castLayout fits humans, the robot heading band and labelled robots on any stage without overlap", () => {
+  const BAND = 48;
+  [[1440, 800], [1024, 700], [800, 1000], [375, 700]].forEach(([w, h]) => {
+    [5, 40, 150, 331, 600].forEach((humans) => {
+      [0, 1, 3, 11, 25].forEach((robots) => {
+        const stages = [{ count: humans }].concat(robots > 0 ? [{ count: robots, names: robotNames(robots) }] : []);
+        const bands = [0, BAND];
+        const layouts = presets.castLayout(w, h, stages, { bands });
+        const where = `${humans} humans + ${robots} robots in ${w}x${h}`;
+        assert.strictEqual(layouts.length, stages.length);
+        layouts.forEach((l, i) => {
+          assert.strictEqual(l.points.length, stages[i].count);
+          assert.ok(l.size >= 12, `avatars at least 12px for ${where}`);
+        });
+        const boxes = castBoxes(layouts, bands);
+        boxes.forEach((b) => assert.ok(b.x0 >= -1e-9 && Math.min(b.x1, w) <= w + 1e-9 && b.y0 >= -1e-9 && b.y1 <= h + 1e-9,
+          `${b.kind} of stage ${b.stage} inside for ${where}`));
+        for (let i = 0; i < boxes.length; i++) {
+          for (let j = i + 1; j < boxes.length; j++) {
+            const a = boxes[i];
+            const b = boxes[j];
+            if (a.kind === "band" && b.kind === "band") continue;
+            assert.ok(!overlaps(a, b), `${a.kind} ${i} and ${b.kind} ${j} overlap for ${where}`);
+          }
+        }
+        if (robots > 0) {
+          const { label } = layouts[1];
+          robotNames(robots).forEach((name) => {
+            const lines = presets.wrapLines(name, label.width, (t) => presets.estimateText(t, label.font));
+            assert.ok(lines.length <= label.lines, `${name} readable for ${where}`);
+          });
+        }
+      });
+    });
+  });
+});
+
+test("castLayout keeps the familiar split for a small team: humans above, robots below, avatars as large as before", () => {
+  const stages = [{ count: 10 }, { count: 3, names: ["sample-bot", "helper-bot", "lint-bot"] }];
+  const [humans, bots] = presets.castLayout(1000, 520, stages, { bands: [0, 48] });
+  // the space is shared by headcount, with a quarter of the team as the floor for each stage
+  const before = presets.scatterLayout(10, 1000, (472 * 10) / (10 + 13 * 0.25), 120, 20);
+  assert.strictEqual(humans.size, before.size);
+  assert.deepStrictEqual(humans.points, before.points);
+  assert.ok(bots.bandTop >= Math.max(...humans.points.map((p) => p.y + humans.size / 2)) - 1e-9);
+  assert.strictEqual(bots.label.lines, 1);
+  assert.deepStrictEqual(presets.castLayout(1000, 520, [{ count: 0 }], { bands: [0] })[0].points, []);
+});
+
+test("castLayout gives a taller heading band its full height", () => {
+  const stages = [{ count: 331 }, { count: 11, names: robotNames(11) }];
+  const [humans, bots] = presets.castLayout(800, 1000, stages, { bands: [0, 96] });
+  assert.ok(Math.max(...humans.points.map((p) => p.y + humans.size / 2)) <= bots.bandTop + 1e-9);
+  assert.ok(Math.min(...bots.points.map((p) => p.y - bots.size / 2)) >= bots.bandTop + 96 - 1e-9);
+});
+
 test("dropIn drops targets from above, then squashes and springs them back on landing", () => {
   const calls = [];
   const tl = {
