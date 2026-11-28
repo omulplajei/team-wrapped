@@ -7,6 +7,7 @@ export default {
     // A stage with nobody in it is skipped, so no bots means no robot stage; a team of none still shows the first heading.
     const all = (Array.isArray(params.stages) ? params.stages : []).map((stage) => ({
       heading: String(stage.heading),
+      names: stage.names === true,     // a name label under each avatar (people without a `name` get none)
       members: people.filter((p) => (stage.kinds || []).includes(p.kind)),
     }));
     const stages = all.filter((s) => s.members.length > 0);
@@ -67,8 +68,9 @@ export default {
       return weights.map((weight, i) => {
         if (i > 0) top += BAND;
         const height = (free * weight) / weightSum;
-        const layout = presets.scatterLayout(stages[i].members.length, W, height);
-        const placed = { size: layout.size, bandTop: top - BAND, points: layout.points.map((p) => ({ x: p.x, y: top + p.y })) };
+        const layout = presets.scatterLayout(stages[i].members.length, W, height, 120, 20, { labels: stages[i].names });
+        const placed = { size: layout.size, label: layout.label, bandTop: top - BAND,
+          points: layout.points.map((p) => ({ x: p.x, y: top + p.y })) };
         top += height;
         return placed;
       });
@@ -94,6 +96,17 @@ export default {
           scale: to.size / from.size,
           duration: 1.0, ease: "power2.inOut",
         }, headingAt);
+        if (stages[j].labels.length > 0) {
+          // Labels hang from their top centre, so they shrink with the avatar and stay just under it.
+          const labels = stages[j].labels;
+          const lift = (p, layout) => p.y + layout.label.offset;
+          tl.to(labels.map((l) => l.el), {
+            x: (k) => to.points[labels[k].idx].x - from.points[labels[k].idx].x,
+            y: (k) => lift(to.points[labels[k].idx], to) - lift(from.points[labels[k].idx], from),
+            scale: to.size / from.size,
+            duration: 1.0, ease: "power2.inOut",
+          }, headingAt);
+        }
         if (j > 0) tl.to(stages[j].title.heading, { y: to.bandTop - from.bandTop, duration: 1.0, ease: "power2.inOut" }, headingAt);
       }
 
@@ -121,8 +134,36 @@ export default {
         arena.append(img);
         return img;
       });
+      stage.labels = [];
+      if (stage.names) {
+        const label = own.label;
+        stage.members.forEach((p, idx) => {
+          if (typeof p.name !== "string" || p.name === "") return;
+          const el = document.createElement("div");
+          el.className = "tw-cast-name";
+          el.textContent = p.name;
+          if (typeof el.setAttribute === "function") el.setAttribute("aria-hidden", "true");   // the image alt names them
+          const c = own.points[idx];
+          el.style.left = c.x - label.width / 2 + "px";
+          el.style.top = c.y + label.offset + "px";
+          el.style.width = label.width + "px";
+          el.style.height = label.height + "px";
+          el.style.lineHeight = label.height + "px";
+          el.style.fontSize = label.font + "px";
+          arena.append(el);
+          stage.labels.push({ el, idx });
+        });
+      }
       const dropAt = headingAt + 0.7;
-      presets.dropIn(tl, stage.faces, dropAt, each, (idx) => own.points[idx].y + 200 + ((idx * 37) % 120), DROP);
+      const rise = (idx) => own.points[idx].y + 200 + ((idx * 37) % 120);
+      presets.dropIn(tl, stage.faces, dropAt, each, rise, DROP);
+      if (stage.labels.length > 0) {
+        // Each label falls with its avatar, a beat behind it, using the avatar's own place in the stagger.
+        const labels = stage.labels;
+        tl.fromTo(labels.map((l) => l.el), { opacity: 0, y: (k) => -rise(labels[k].idx) },
+          { opacity: 0.8, y: 0, duration: DROP, ease: "bounce.out",
+            stagger: (k) => each * labels[k].idx }, dropAt + 0.12);
+      }
       at = dropAt + each * Math.max(n - 1, 0) + DROP + HOLD;
     });
     return tl;

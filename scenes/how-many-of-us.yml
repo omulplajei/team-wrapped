@@ -12,3 +12,4 @@ params:
       kinds: [human, unlinked]
     - heading: "… and {count:robot|robots}"
       kinds: [bot]
+      names: true          # each robot's name under its avatar (only bots have a `name`)

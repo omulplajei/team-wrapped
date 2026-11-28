@@ -72,37 +72,58 @@
     return tl.to(targets, { scaleX: 1, scaleY: 1, duration: 0.4, stagger: each, ease: "elastic.out(1, 0.5)" }, land + 0.08);
   }
 
+  // Name label metrics for an avatar of `size`: one line, font scaling with the avatar (never under 9px),
+  // 1.6 avatars wide, starting `offset` below the avatar centre.
+  function nameLabel(size) {
+    const font = Math.max(9, Math.round(size * 0.16 * 10) / 10);
+    const gap = Math.max(2, size * 0.05);
+    return { font, width: size * 1.6, height: font * 1.3, offset: size / 2 + gap };
+  }
+
   // Scatters `count` avatars loosely over width x height without overlap: a grid of roomy cells, each avatar
   // jittered inside its cell, cells visited in a fixed scrambled order. Returns {size, points: [{x, y}]} (centres).
   // Deterministic, and the avatar size shrinks as the count grows so large teams fit.
-  function scatterLayout(count, width, height, maxSize = 120, minSize = 20) {
+  // With `{labels: true}` each cell also holds a name label under its avatar (see nameLabel): cells grow to fit
+  // avatar plus label, so no avatar or label overlaps another, and the result carries `label` metrics.
+  function scatterLayout(count, width, height, maxSize = 120, minSize = 20, options = {}) {
     if (!(count > 0)) return { size: 0, points: [] };
+    const labels = Boolean(options && options.labels);
+    // The box one item needs (avatar, plus its label when labelled) and the cell it is jittered in.
+    const box = (s) => {
+      if (!labels) return { w: s, h: s, cellW: s * 1.25, cellH: s * 1.25 };
+      const label = nameLabel(s);
+      const w = label.width;
+      const h = label.offset + label.height + s / 2;
+      return { w, h, cellW: w + s * 0.2, cellH: h + s * 0.2 };
+    };
     let size = minSize;
     let cols = 1;
     let rows = count;
     for (let s = maxSize; s >= minSize; s -= 2) {
-      const c = Math.max(1, Math.floor(width / (s * 1.25)));
+      const b = box(s);
+      const c = Math.max(1, Math.floor(width / b.cellW));
       const r = Math.ceil(count / c);
-      if (r * s * 1.25 <= height) { size = s; cols = c; rows = r; break; }
+      if (r * b.cellH <= height) { size = s; cols = c; rows = r; break; }
       if (s - 2 < minSize) { size = minSize; cols = c; rows = r; }
     }
-    const cell = size * 1.25;
+    const { w, h, cellW, cellH } = box(size);
     const total = cols * rows;
     const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
     let step = Math.max(1, Math.round(total * 0.618));
     while (gcd(step, total) !== 1) step++;
-    const left = (width - cols * cell) / 2;
-    const top = Math.max(0, (height - rows * cell) / 2);
-    const jitter = (i, k) => (((Math.imul(i + 1, k) >>> 0) % 1000) / 1000 - 0.5) * (cell - size);
+    const left = (width - cols * cellW) / 2;
+    const top = Math.max(0, (height - rows * cellH) / 2);
+    const jitter = (i, k, slack) => (((Math.imul(i + 1, k) >>> 0) % 1000) / 1000 - 0.5) * slack;
     const points = [];
     for (let i = 0; i < count; i++) {
       const at = (i * step) % total;
       points.push({
-        x: left + (at % cols + 0.5) * cell + jitter(i, 2654435761),
-        y: top + (Math.floor(at / cols) + 0.5) * cell + jitter(i, 40503),
+        x: left + (at % cols + 0.5) * cellW + jitter(i, 2654435761, cellW - w),
+        // the avatar sits at the top of its box, the label (if any) under it
+        y: top + (Math.floor(at / cols) + 0.5) * cellH + jitter(i, 40503, cellH - h) - (h - size) / 2,
       });
     }
-    return { size, points };
+    return labels ? { size, points, label: nameLabel(size) } : { size, points };
   }
 
   // Schedules the main count and the tail beats on `tl`, calling show(v) whenever the value changes.
@@ -253,7 +274,7 @@
     });
   }
 
-  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, dropIn, scatterLayout, countUp, wheelPositions, odometer, fitFolderSize, formatDate, formatMonth, fillTemplate };
+  const api = { format, lookup, isPartial, fadeIn, stagger, popIn, swellIn, bubbleIn, dropIn, scatterLayout, nameLabel, countUp, wheelPositions, odometer, fitFolderSize, formatDate, formatMonth, fillTemplate };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

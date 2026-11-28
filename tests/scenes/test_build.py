@@ -4,6 +4,7 @@ import shutil
 import subprocess
 
 import pytest
+import yaml
 
 from team_wrapped.cli import main
 from team_wrapped.scenes.build import BuildError, build, transform_renderer
@@ -547,3 +548,15 @@ def test_logo_reused_as_the_only_backdrop_image_is_copied_once(repo_root, sample
     assert [p.name for p in (result.out_dir / "assets" / "theme").iterdir()] == ["logo.png"]
     theme = read_payload(result.index)["script"]["theme"]
     assert theme["backdrop"]["images"] == ["assets/theme/logo.png"]
+
+
+def test_the_cast_scene_names_the_robots_without_requiring_names(repo_root, sample_root, tmp_path):
+    scene = yaml.safe_load((repo_root / "scenes" / "how-many-of-us.yml").read_text())
+    assert all("list.name" not in req["fields"] for req in scene["requires"])
+    stages = scene["params"]["stages"]
+    assert [s.get("names", False) for s in stages] == [False, True] and stages[1]["kinds"] == ["bot"]
+    data = sample_copy(sample_root, tmp_path)
+    plain_script(data, "cast", "all", "how-many-of-us")
+    result = build("cast", repo_root, data, tmp_path / "dist")
+    people = next(s for s in read_payload(result.index)["scenes"] if s["id"] == "how-many-of-us")["data"]["contributors"]["list"]
+    assert all(("name" in p) == (p["kind"] == "bot") for p in people)

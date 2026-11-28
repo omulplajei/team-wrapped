@@ -411,6 +411,48 @@ test("scatterLayout handles no avatars, and falls back to the minimum size when 
   assert.strictEqual(presets.scatterLayout(5000, 300, 100).size, 20);
 });
 
+// The boxes a labelled layout draws: each avatar and the name label under it.
+const labelledBoxes = ({ size, points, label }) => points.flatMap((p) => [
+  { x0: p.x - size / 2, x1: p.x + size / 2, y0: p.y - size / 2, y1: p.y + size / 2 },
+  { x0: p.x - label.width / 2, x1: p.x + label.width / 2, y0: p.y + label.offset, y1: p.y + label.offset + label.height },
+]);
+const overlaps = (a, b) => a.x0 < b.x1 - 1e-9 && b.x0 < a.x1 - 1e-9 && a.y0 < b.y1 - 1e-9 && b.y0 < a.y1 - 1e-9;
+
+test("scatterLayout with labels reserves room so no avatar or label overlaps another, all inside the area", () => {
+  [[900, 260], [1000, 520], [600, 400], [400, 300]].forEach(([w, h]) => {
+    for (let count = 1; count <= 40; count++) {
+      const layout = presets.scatterLayout(count, w, h, 120, 20, { labels: true });
+      assert.strictEqual(layout.points.length, count);
+      const boxes = labelledBoxes(layout);
+      boxes.forEach((b) => assert.ok(b.x0 >= -1e-9 && b.x1 <= w + 1e-9 && b.y0 >= -1e-9 && b.y1 <= h + 1e-9,
+        `inside ${w}x${h} for ${count}`));
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          if (Math.floor(i / 2) === Math.floor(j / 2)) continue;     // an avatar and its own label
+          assert.ok(!overlaps(boxes[i], boxes[j]), `boxes ${i} and ${j} overlap for ${count} in ${w}x${h}`);
+        }
+      }
+    }
+  });
+});
+
+test("scatterLayout labels sit under their avatar, are 1.6 avatars wide and scale with the avatar (min 9px)", () => {
+  const big = presets.scatterLayout(2, 1000, 520, 120, 20, { labels: true });
+  assert.ok(Math.abs(big.label.width - 1.6 * big.size) < 1e-9);
+  assert.ok(big.label.offset >= big.size / 2);
+  assert.ok(big.label.font > 9 && big.label.height > big.label.font);
+  const small = presets.scatterLayout(40, 500, 200, 120, 20, { labels: true });
+  assert.ok(small.size < big.size && small.label.font < big.label.font);
+  assert.strictEqual(presets.scatterLayout(400, 300, 100, 120, 20, { labels: true }).label.font, 9);
+  assert.deepStrictEqual(presets.scatterLayout(0, 900, 500, 120, 20, { labels: true }), { size: 0, points: [] });
+});
+
+test("scatterLayout without labels is unchanged and has no label metrics", () => {
+  const plain = presets.scatterLayout(12, 900, 500);
+  assert.deepStrictEqual(presets.scatterLayout(12, 900, 500, 120, 20, {}), plain);
+  assert.strictEqual(plain.label, undefined);
+});
+
 test("dropIn drops targets from above, then squashes and springs them back on landing", () => {
   const calls = [];
   const tl = {

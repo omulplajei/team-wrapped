@@ -149,6 +149,8 @@ body:not(.tw-started) #tw-controls { display: none; }
 .tw-cast-heading-late { position: absolute; left: 0; right: 0; height: 48px; margin: 0; line-height: 48px;
   font-size: clamp(1.2rem, 3.5vw, 2rem); }
 .tw-cast-face { position: absolute; border-radius: 50%; object-fit: cover; background: var(--tw-surface); }
+.tw-cast-name { position: absolute; margin: 0; text-align: center; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; opacity: 0.8; transform-origin: 50% 0; pointer-events: none; }
 
 /* capability-flow: hexagons drawn on a canvas, text in the DOM over it */
 .tw-cap { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
