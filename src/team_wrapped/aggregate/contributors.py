@@ -33,6 +33,11 @@ def avatar_name(login: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", login.replace("]", ""))
 
 
+def bot_name(login: str) -> str:
+    """Display name of a bot: its login without the trailing `[bot]` (`sample-bot[bot]` is `sample-bot`)."""
+    return login[:-5] if login.lower().endswith("[bot]") and len(login) > 5 else login
+
+
 def _activity(ctx: Context):
     """-> {key: {"logins": set, "repos": {repo: [first, last]}}}, from activity inside the window."""
     resolver = Resolver(ctx.config.aliases)
@@ -96,6 +101,8 @@ def build_contributors(ctx: Context):
             entry = {"id": ids[key]}
             if login:
                 entry["login"] = login
+            if kind == "bot":                # only bots: a person's name never reaches derived/
+                entry["name"] = bot_name(login)
             entry.update({
                 "kind": kind,
                 "avatar_file": _avatar(ctx, login),

@@ -15,6 +15,7 @@ Metric: any. Not time-bucketed.
 | `by_kind` | counts of `human`, `bot`, `unlinked` |
 | `list[].id` | sequential id (`c001`, ...) assigned after sorting; not derived from any email or name |
 | `list[].login` | GitHub login; absent for `unlinked` contributors |
+| `list[].name` | bots only: display name, the login without the trailing `[bot]` (`sample-bot[bot]` is `sample-bot`); humans and `unlinked` contributors never have one |
 | `list[].avatar_file` | local avatar path (placeholder for unlinked) |
 | `list[].kind` | `human`, `bot` or `unlinked` |
 | `list[].first_activity`, `last_activity` | dates |

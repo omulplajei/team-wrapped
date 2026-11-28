@@ -217,3 +217,20 @@ def test_output_is_deterministic_regardless_of_input_order(fx):
     first = json.dumps(build(fx))
     fx.raw("alpha-api", "commits.jsonl", list(reversed(records)))
     assert json.dumps(build(fx)) == first
+
+
+def test_bots_get_a_display_name_and_people_never_do(fx):
+    fx.config(CONFIG + "bot_patterns: ['*[bot]', 'helper-*']\n")
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("1", login="sample-bot[bot]"), commit("2", login="helper-robot"),
+        commit("3", login="ada-dev", name="Ada Lovelace"),
+        commit("4", login=None, email="nobody@example.com", name="Nobody Known"),
+    ])
+    entries = build(fx)["all"]["list"]
+    names = {(c["kind"], c.get("login")): c.get("name") for c in entries}
+    assert names == {("human", "ada-dev"): None, ("unlinked", None): None,
+                     ("bot", "helper-robot"): "helper-robot", ("bot", "sample-bot[bot]"): "sample-bot"}
+    assert all("name" not in c for c in entries if c["kind"] != "bot")
+    bot = next(c for c in entries if c.get("login") == "sample-bot[bot]")
+    assert list(bot)[:4] == ["id", "login", "name", "kind"]
+    assert "Ada Lovelace" not in json.dumps(entries) and "Nobody Known" not in json.dumps(entries)

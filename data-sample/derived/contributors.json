@@ -161,6 +161,7 @@
         {
           "id": "c011",
           "login": "dependabot[bot]",
+          "name": "dependabot",
           "kind": "bot",
           "avatar_file": "avatars/dependabot_bot.png",
           "repos": [
@@ -178,6 +179,7 @@
         {
           "id": "c012",
           "login": "renovate[bot]",
+          "name": "renovate",
           "kind": "bot",
           "avatar_file": "avatars/renovate_bot.png",
           "repos": [
@@ -195,6 +197,7 @@
         {
           "id": "c013",
           "login": "release-robot[bot]",
+          "name": "release-robot",
           "kind": "bot",
           "avatar_file": "avatars/release-robot_bot.png",
           "repos": [
@@ -323,6 +326,7 @@
         {
           "id": "c011",
           "login": "dependabot[bot]",
+          "name": "dependabot",
           "kind": "bot",
           "avatar_file": "avatars/dependabot_bot.png",
           "repos": [
@@ -340,6 +344,7 @@
         {
           "id": "c012",
           "login": "renovate[bot]",
+          "name": "renovate",
           "kind": "bot",
           "avatar_file": "avatars/renovate_bot.png",
           "repos": [
@@ -357,6 +362,7 @@
         {
           "id": "c013",
           "login": "release-robot[bot]",
+          "name": "release-robot",
           "kind": "bot",
           "avatar_file": "avatars/release-robot_bot.png",
           "repos": [

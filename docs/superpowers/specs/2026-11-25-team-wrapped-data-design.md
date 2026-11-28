@@ -126,7 +126,7 @@ Built during collection from the author fields of all four metrics and deduplica
 
 The purpose is to show **how many contributors there are**, not to profile individuals. No per-person activity counts are stored.
 
-**Fields per contributor:** stable id, `login` (nullable), display name if known, `avatar_file` (path in `data/avatars/`), `kind` (`human`, `bot` or `unlinked`), the repos and groups they touched, first and last activity dates.
+**Fields per contributor:** stable id, `login` (nullable), `name` (bots only: the login without the trailing `[bot]`, so `sample-bot[bot]` is `sample-bot`; humans and unlinked contributors never get a name, so no personal name reaches `derived/`), `avatar_file` (path in `data/avatars/`), `kind` (`human`, `bot` or `unlinked`), the repos and groups they touched, first and last activity dates.
 
 **Unlinked commit authors.** A commit author whose email is not tied to a GitHub account has no login and no avatar. These are counted as contributors:
 - Identity key: the author email if present, otherwise the author name. Keys are type-prefixed (`login:`, `email:`, `name:`), so an unlinked author named like a login never merges into that login. `aliases` map an alias to a canonical login (an alias that is a login, or an email for a record that has no login) and merge the unlinked author into the linked contributor.
