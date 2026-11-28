@@ -5,6 +5,5 @@ type: message
 requires: []
 duration: 8
 params:
-  text: "Thank you"
-  subtext: "To everyone who shipped, reviewed and looked after each other"
+  text: "Thank you!"
   logo: color
