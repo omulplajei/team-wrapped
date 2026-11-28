@@ -14,14 +14,13 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from ..config import Config
 from ..github import BudgetExhausted, GhError, NotFound, Forbidden, RateLimited, Transient
 from ..scenes.loader import LoadError
 from .avatars import download_avatars
 from .commits import fetch_commits
-from .common import iso
+from .common import iso, utc_bounds
 from .pull_requests import PullRequestBatch, fetch_pull_requests
 from .store import write_records, write_status
 
@@ -69,18 +68,6 @@ def _date(flag, value):
         return datetime.date.fromisoformat(value)
     except (TypeError, ValueError):
         raise LoadError(f"{flag} must be a date like 2026-01-31 (got {value!r})") from None
-
-
-def utc_bounds(since, until, timezone: str):
-    """(start, end): local midnight starting `since` and the last second of `until`, both in UTC; None when open."""
-    tz = ZoneInfo(timezone)
-    start = end = None
-    if since:
-        start = datetime.datetime.combine(since, datetime.time(), tz).astimezone(datetime.timezone.utc)
-    if until:
-        end = (datetime.datetime.combine(until + datetime.timedelta(days=1), datetime.time(), tz)
-               - datetime.timedelta(seconds=1)).astimezone(datetime.timezone.utc)
-    return start, end
 
 
 def make_plan(config: Config, repos=None, metrics=None, since=None, until=None) -> Plan:

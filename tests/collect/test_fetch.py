@@ -146,3 +146,21 @@ def test_a_range_that_cannot_be_split_is_noted():
     fetch_pull_requests(gh, "sample-org", "sample-api", NOW - datetime.timedelta(seconds=30), None, batch, now=NOW)
     assert batch.notes and "1000" in batch.notes[0]
     assert [pr["number"] for pr in batch.pull_requests] == [1]
+
+
+def test_a_created_range_is_sent_and_kept_when_splitting():
+    seen = []
+
+    def route(query, variables):
+        seen.append(variables["q"])
+        return search([pr_node(5)], count=1500 if len(seen) == 1 else 1)
+    gh, _ = make_client(route)
+    batch = PullRequestBatch()
+    created_from = datetime.datetime(2026, 6, 30, 21, tzinfo=UTC)
+    fetch_pull_requests(gh, "sample-org", "sample-api", START, END, batch, now=NOW, created_from=created_from)
+    assert seen[0] == ("repo:sample-org/sample-api is:pr sort:created-asc "
+                       "created:2026-06-30T21:00:00Z..2026-12-31T21:59:59Z updated:>=2025-12-31T22:00:00Z")
+    assert all("created:2026-06-30T21:00:00Z..2026-12-31T21:59:59Z updated:" in q for q in seen[1:])
+    open_end = PullRequestBatch()
+    fetch_pull_requests(gh, "sample-org", "sample-api", None, None, open_end, now=NOW, created_from=created_from)
+    assert seen[-1] == "repo:sample-org/sample-api is:pr sort:created-asc created:>=2026-06-30T21:00:00Z"

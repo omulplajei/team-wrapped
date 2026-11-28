@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime
 import re
+from zoneinfo import ZoneInfo
 
 from ..aggregate.window import parse_timestamp
 from ..github import NotFound
@@ -15,6 +16,18 @@ def iso(moment: datetime.datetime | None) -> str | None:
     if moment is None:
         return None
     return moment.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def utc_bounds(since, until, timezone: str):
+    """(start, end): local midnight starting `since` and the last second of `until`, both in UTC; None when open."""
+    tz = ZoneInfo(timezone)
+    start = end = None
+    if since:
+        start = datetime.datetime.combine(since, datetime.time(), tz).astimezone(datetime.timezone.utc)
+    if until:
+        end = (datetime.datetime.combine(until + datetime.timedelta(days=1), datetime.time(), tz)
+               - datetime.timedelta(seconds=1)).astimezone(datetime.timezone.utc)
+    return start, end
 
 
 def timestamp(value) -> str | None:

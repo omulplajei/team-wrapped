@@ -3,7 +3,7 @@
 The search returns each pull request with its first reviews, conversation comments and review threads inlined;
 longer connections are completed with `node(id:)` follow-ups, so every record of a pull request is complete
 before it is kept. GitHub search returns at most 1000 results per query: a larger result splits the `updated`
-range in halves until each half fits."""
+range in halves until each half fits. An incremental run sends several searches into one batch (see checkpoint.py)."""
 from __future__ import annotations
 
 import datetime
@@ -106,10 +106,15 @@ def _total(conn, fallback: int) -> int:
     return total if whole(total) else fallback
 
 
-def _search_text(org, repo, end, lo, hi) -> str:
+def _search_text(org, repo, created, lo, hi) -> str:
     parts = [f"repo:{org}/{repo}", "is:pr", "sort:created-asc"]
-    if end:
-        parts.append(f"created:<={iso(end)}")
+    first, last = created
+    if first and last:
+        parts.append(f"created:{iso(first)}..{iso(last)}")
+    elif first:
+        parts.append(f"created:>={iso(first)}")
+    elif last:
+        parts.append(f"created:<={iso(last)}")
     if lo and hi:
         parts.append(f"updated:{iso(lo)}..{iso(hi)}")
     elif lo:
@@ -117,16 +122,16 @@ def _search_text(org, repo, end, lo, hi) -> str:
     return " ".join(parts)
 
 
-def _search(gh, org, repo, end, lo, hi, batch: PullRequestBatch, now) -> None:
-    text = _search_text(org, repo, end, lo, hi)
+def _search(gh, org, repo, created, lo, hi, batch: PullRequestBatch, now) -> None:
+    text = _search_text(org, repo, created, lo, hi)
     for index, conn in enumerate(pages(gh, queries.SEARCH_PULL_REQUESTS, ("search",), required=1, q=text,
                                        first=queries.SEARCH_PAGE)):
         if index == 0 and whole(conn.get("issueCount")) and conn["issueCount"] > SEARCH_CAP:
             low, high = lo or GITHUB_EPOCH, hi or now
             if high - low > _MIN_SPLIT:
                 middle = (low + (high - low) / 2).replace(microsecond=0)
-                _search(gh, org, repo, end, low, middle, batch, now)
-                _search(gh, org, repo, end, middle + datetime.timedelta(seconds=1), high, batch, now)
+                _search(gh, org, repo, created, low, middle, batch, now)
+                _search(gh, org, repo, created, middle + datetime.timedelta(seconds=1), high, batch, now)
                 return
             batch.notes.append(f"{conn['issueCount']} pull requests updated between {iso(low)} and {iso(high)}: "
                                f"search returns only the first {SEARCH_CAP}")
@@ -135,8 +140,10 @@ def _search(gh, org, repo, end, lo, hi, batch: PullRequestBatch, now) -> None:
                 _pull_request(gh, repo, node, batch)
 
 
-def fetch_pull_requests(gh, org: str, repo: str, start, end, batch: PullRequestBatch, now=None) -> None:
-    """Fill `batch` with the pull requests created by `end` and updated since `start` (UTC datetimes, either may
-    be None), with their reviews and comments. The aggregator applies the exact window."""
+def fetch_pull_requests(gh, org: str, repo: str, start, end, batch: PullRequestBatch, now=None,
+                        created_from=None) -> None:
+    """Fill `batch` with the pull requests created by `end` (and from `created_from`, when set) and updated since
+    `start` (UTC datetimes, any may be None), with their reviews and comments. A pull request already in the
+    batch is not fetched again. The aggregator applies the exact window."""
     now = now or datetime.datetime.now(datetime.timezone.utc)
-    _search(gh, org, repo, end, start, None, batch, now)
+    _search(gh, org, repo, (created_from, end), start, None, batch, now)
