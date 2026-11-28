@@ -139,6 +139,15 @@ def test_new_keys_have_defaults(tmp_path):
     assert config.timezone == "UTC"
     assert config.top_n == 5
     assert config.download_avatars is True
+    assert config.bot_names == {}
+
+
+def test_bot_names_are_read_and_trimmed(tmp_path):
+    config = load_config(write(tmp_path, MIN + (
+        "bot_patterns: ['*[bot]', claude, cursoragent, Deployment Script]\n"
+        "bot_names: {claude: ' Claude ', cursoragent: Cursor, 'sample-bot[bot]': Sample Bot}\n")))
+    assert config.bot_patterns == ["*[bot]", "claude", "cursoragent", "Deployment Script"]
+    assert config.bot_names == {"claude": "Claude", "cursoragent": "Cursor", "sample-bot[bot]": "Sample Bot"}
 
 
 def test_new_keys_are_read(tmp_path):
@@ -160,6 +169,12 @@ def test_new_keys_are_read(tmp_path):
     ("metrics: commits", "metrics"),
     ("bot_patterns: '*[bot]'", "bot_patterns"),
     ("bot_patterns: [1]", "bot_patterns"),
+    ("bot_names: [claude]", "bot_names"),
+    ("bot_names: {claude: 1}", "bot_names"),
+    ("bot_names: {claude: '  '}", "bot_names"),
+    ("bot_names: {claude: null}", "bot_names"),
+    ("bot_names: {1: Claude}", "bot_names"),
+    ("bot_names: {'': Claude}", "bot_names"),
     ("aliases: [a, b]", "aliases"),
     ("aliases: {a: 1}", "aliases"),
     ("aliases: {1: a}", "aliases"),

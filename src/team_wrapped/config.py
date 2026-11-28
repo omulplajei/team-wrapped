@@ -12,7 +12,7 @@ import yaml
 from .scenes.loader import LoadError
 
 _KNOWN_KEYS = {
-    "org", "repos", "groups", "since", "until", "metrics", "commit_branches", "bot_patterns",
+    "org", "repos", "groups", "since", "until", "metrics", "commit_branches", "bot_patterns", "bot_names",
     "aliases", "timezone", "curiosities", "avatars", "reviewer_pairs", "group_info",
 }
 CATEGORIES = ("core", "extension", "support")
@@ -33,6 +33,7 @@ class Config:
     until: str | None = None
     metrics: list = field(default_factory=lambda: list(METRICS))
     bot_patterns: list = field(default_factory=lambda: list(DEFAULT_BOT_PATTERNS))
+    bot_names: dict = field(default_factory=dict)   # bot login -> display name
     aliases: dict = field(default_factory=dict)
     timezone: str = "UTC"
     top_n: int = 5                  # curiosities.top_n
@@ -72,6 +73,18 @@ def _bot_patterns(path, value) -> list:
     if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
         raise LoadError(f"{path}: bot_patterns must be a list of non-empty strings")
     return list(value)
+
+
+def _bot_names(path, value) -> dict:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise LoadError(f"{path}: bot_names must be a mapping of bot login to display name")
+    for login, name in value.items():
+        if not isinstance(login, str) or not login.strip() or not isinstance(name, str) or not name.strip():
+            raise LoadError(f"{path}: bot_names must map a login (text) to a display name (text); "
+                            f"got {login!r}: {name!r}")
+    return {login.strip(): name.strip() for login, name in value.items()}
 
 
 def _aliases(path, value) -> dict:
@@ -231,6 +244,7 @@ def load_config(path) -> Config:
                   until=until.isoformat() if until else None,
                   metrics=_metrics(path, data.get("metrics")),
                   bot_patterns=_bot_patterns(path, data.get("bot_patterns")),
+                  bot_names=_bot_names(path, data.get("bot_names")),
                   aliases=_aliases(path, data.get("aliases")),
                   timezone=_timezone(path, data.get("timezone")),
                   top_n=_top_n(path, data.get("curiosities")),

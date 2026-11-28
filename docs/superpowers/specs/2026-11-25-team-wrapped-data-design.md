@@ -72,14 +72,15 @@ team-wrapped/
 | `since`, `until` | optional window; default is full history |
 | `metrics` | enabled metrics, for example `[commits, pull_requests, reviews, comments]` |
 | `commit_branches` | `default` (default) or `all` |
-| `bot_patterns` | login patterns marking bots, for example `*[bot]` |
+| `bot_patterns` | patterns marking bots, for example `*[bot]` (default) or `claude`. Matched against the login; for a contributor without a login, against the author name, so a service identity such as `Deployment Script` can be declared a bot (section 6) |
+| `bot_names` | optional map of bot login to display name, for example `claude: Claude`, `cursoragent: Cursor`; default: the login without `[bot]` |
 | `aliases` | optional map merging several logins or emails into one contributor |
 | `timezone` | used for weekday and hour statistics; default UTC |
 | `curiosities.top_n` | records kept per curiosity; default 5 |
 | `avatars.download` | download contributor avatars (default `true`) |
 | `reviewer_pairs` | author-to-reviewer pair statistic; default `false` |
 
-The loader (`config.py`) validates `org`, `repos`, `groups`, `since`, `until`, `metrics`, `bot_patterns`, `aliases`, `timezone`, `curiosities.top_n` and `avatars.download`; `commit_branches` (`default` or `all`; `collect` supports only `default` for now and stops with a message on `all`) is validated too, and `reviewer_pairs` is accepted and validated when a statistic uses it. In `bot_patterns`, `*` and `?` are wildcards and every other character, brackets included, is literal, so `*[bot]` matches `renovate[bot]` and not `ken-t`.
+The loader (`config.py`) validates `org`, `repos`, `groups`, `since`, `until`, `metrics`, `bot_patterns`, `bot_names` (a mapping of non-empty text to non-empty text, trimmed), `aliases`, `timezone`, `curiosities.top_n` and `avatars.download`; `commit_branches` (`default` or `all`; `collect` supports only `default` for now and stops with a message on `all`) is validated too, and `reviewer_pairs` is accepted and validated when a statistic uses it. In `bot_patterns`, `*` and `?` are wildcards and every other character, brackets included, is literal, so `*[bot]` matches `renovate[bot]` and not `ken-t`. Matching is case-insensitive and covers the whole login (or name): `Jenkins *` matches `jenkins ci` and not `Old Jenkins CI`.
 
 `data-sample/config.yml` documents every option. Bad config (unknown metric, malformed dates, empty repo list) fails at startup with a clear message.
 
