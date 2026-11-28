@@ -1,4 +1,5 @@
-"""Contributor avatars (spec section 6): `https://github.com/<login>.png` into data/avatars/, once per login.
+"""Contributor avatars (spec section 6): `https://github.com/<login>.png` into data/avatars/, once per login
+(authors, reviewers and commit co-authors).
 
 Files are named exactly as the aggregator looks them up (`contributors.avatar_name` of the lower-cased login).
 A failed download leaves the contributor on the placeholder; failed logins are listed in raw/avatars-failed.json.
@@ -16,7 +17,7 @@ from pathlib import Path
 from ..aggregate.common import Resolver
 from ..aggregate.contributors import avatar_name
 from ..aggregate.io import write_json
-from ..aggregate.raw import load_raw
+from ..aggregate.raw import co_authors, load_raw
 from .placeholder import ensure_placeholder, placeholder_png  # noqa: F401 - re-exported
 
 MAX_BYTES = 1_000_000
@@ -53,15 +54,21 @@ def fetch_url(url: str) -> tuple:
         return response.headers.get("Content-Type", ""), response.read(MAX_BYTES + 1)
 
 
+def _record_logins(record: dict):
+    yield from (record.get(name) for name in _LOGIN_FIELDS)
+    yield from (co["login"] for co in co_authors(record))
+
+
 def _logins(data_root: Path, config) -> list:
-    """Distinct canonical logins (aliases applied) found in the raw records, by lower-cased login."""
+    """Distinct canonical logins (aliases applied) found in the raw records, commit co-authors included, by
+    lower-cased login."""
     resolver = Resolver(config.aliases)
     found = {}
     raw = load_raw(data_root, config)
     for records in raw.records.values():
         for record in records:
-            for name in _LOGIN_FIELDS:
-                who = resolver.resolve(record.get(name), None, None)
+            for login in _record_logins(record):
+                who = resolver.resolve(login, None, None)
                 if who and who[1].lower() not in _DELETED:
                     found.setdefault(who[1].lower(), who[1])
     return sorted(found.values(), key=str.lower)

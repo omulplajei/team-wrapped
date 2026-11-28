@@ -257,3 +257,16 @@ def test_avatars_only_refuses_flags_about_fetching_repositories(root, fake, caps
 def test_avatars_only_needs_raw_data(root, fake, capsys):
     assert main(["collect", "--root", str(root), "--avatars-only"]) == 2
     assert "run collect first" in capsys.readouterr().err
+
+
+def test_avatars_only_downloads_co_author_avatars(root, fake, capsys):
+    folder = root / "data" / "raw" / "sample-api"
+    folder.mkdir(parents=True)
+    (folder / "commits.jsonl").write_text(json.dumps({"sha": "a", "author_login": "ada-dev", "co_authors": [
+        {"login": "cursoragent", "name": "Cursor Agent", "email": "cursor@example.com"},
+        {"login": None, "name": "Jenkins CI", "email": "ci@example.com"}]}) + "\n")
+    assert main(["collect", "--root", str(root), "--avatars-only", "--dry-run"]) == 0
+    assert "dry run: 2 avatars would be downloaded" in capsys.readouterr().out
+    assert main(["collect", "--root", str(root), "--avatars-only"]) == 0
+    assert "avatars: 2 downloaded, 0 failed" in capsys.readouterr().out
+    assert (root / "data" / "avatars" / "cursoragent.png").read_bytes() == b"png"

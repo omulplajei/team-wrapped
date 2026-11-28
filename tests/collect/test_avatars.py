@@ -187,3 +187,18 @@ def test_the_placeholder_is_a_deterministic_128px_png():
     corner, centre = row(0)[0:4], row(64)[64 * 4:64 * 4 + 4]
     assert corner[3] == 0                                              # transparent outside the circle
     assert centre[3] == 255 and centre[0] == centre[1] == centre[2]    # opaque neutral grey inside
+
+
+def test_co_author_logins_are_downloaded_too(data):
+    folder = data / "raw" / "sample-api"
+    (folder / "commits.jsonl").write_text(json.dumps({"sha": "c", "author_login": "Old-Ada", "co_authors": [
+        {"login": "claude", "name": "Claude", "email": "c@example.com"},
+        {"login": "Copilot[bot]", "name": "Copilot", "email": "copilot@example.com"},
+        {"login": "old-ada", "name": "Ada", "email": "ada@example.com"},           # alias: same person as the author
+        {"login": None, "name": "Deployment Script", "email": "deploy@example.com"}]}) + "\n"
+        + json.dumps({"sha": "d", "author_login": "ken-t", "co_authors": "malformed"}) + "\n")
+    failed, urls = run(data, lambda url: ("image/png", PNG))
+    assert "https://github.com/claude.png?size=200" in urls and "https://github.com/Copilot.png?size=200" in urls
+    assert sum("ada-dev" in u for u in urls) == 1
+    assert {"claude.png", "copilot_bot.png", "ada-dev.png"} <= set(pngs(data))
+    assert avatars.missing_avatars(data, load_config(data / "config.yml")) == ["bad/login"]
