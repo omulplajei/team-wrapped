@@ -1,7 +1,10 @@
 """Every GraphQL document the collector sends. Page sizes are kept small enough that one search page stays well
-under GitHub's node limit (500 000) and costs about a dozen rate-limit points."""
+under GitHub's node limit (500 000) and costs about a dozen rate-limit points. A history page of COMMIT_PAGE commits
+with COMMIT_AUTHORS authors each is at most about 1 200 nodes and costs 2 to 3 points."""
 from __future__ import annotations
 
+COMMIT_PAGE = 100           # commits per history page
+COMMIT_AUTHORS = 10         # authors per commit: the primary author, then the `Co-authored-by:` trailers
 SEARCH_PAGE = 25            # pull requests per search page
 NESTED_PAGE = 50            # reviews and conversation comments inlined per pull request
 THREAD_PAGE = 30            # review threads per pull request, and comments per thread, inlined
@@ -22,12 +25,13 @@ COMMITS = """query($owner: String!, $name: String!, $since: GitTimestamp, $until
           oid committedDate authoredDate additions deletions changedFilesIfAvailable
           parents { totalCount }
           author { name email user { login __typename } }
+          authors(first: %(authors)s) { nodes { name email user { login __typename } } }
           associatedPullRequests(first: 1) { nodes { number } }
         }
       }
     } } }
   }
-}""" % {"rate": _RATE, "page": _PAGE_INFO}
+}""" % {"rate": _RATE, "page": _PAGE_INFO, "authors": COMMIT_AUTHORS}
 
 _REVIEW = f"fragment Review on PullRequestReview {{ databaseId state submittedAt {_ACTOR} }}"
 _COMMENT = f"fragment Comment on IssueComment {{ databaseId createdAt {_ACTOR} }}"

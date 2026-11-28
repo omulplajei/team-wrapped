@@ -1,6 +1,6 @@
 import json
 
-from team_wrapped.aggregate.raw import load_raw
+from team_wrapped.aggregate.raw import co_authors, load_raw
 from team_wrapped.config import load_config
 
 from aggregate_helpers import comment, commit, pull_request, review
@@ -135,3 +135,24 @@ def test_records_with_invalid_keys_are_corrupt_and_never_crash(fx):
     assert [len(raw.records[m]) for m in ("commits", "pull_requests", "reviews", "comments")] == [1, 1, 1, 2]
     assert raw.corrupt == {"alpha-api/commits.jsonl": 2, "alpha-api/pull_requests.jsonl": 3,
                            "alpha-api/reviews.jsonl": 3, "alpha-api/comments.jsonl": 3}
+
+
+def test_co_authors_pass_through_and_malformed_values_are_cleaned_not_corrupt(fx):
+    claude = {"login": "claude", "name": "Claude", "email": "noreply@example.com"}
+    service = {"login": None, "name": "Deployment Script", "email": "deploy@example.com"}
+    fx.raw("alpha-api", "commits.jsonl", [
+        commit("a", co_authors=[claude, service]),
+        commit("b"),                                                    # older record: no field
+        commit("c", co_authors="claude"), commit("d", co_authors={"login": "claude"}), commit("e", co_authors=None),
+        commit("f", co_authors=[claude, "claude", 5, None, {"login": ["x"], "name": "X"}, {"name": None},
+                                {"login": "", "name": "", "email": ""}, {"login": 7, "name": "Seven", "email": True}]),
+    ])
+    raw = load(fx)
+    assert raw.corrupt == {}
+    by_sha = {r["sha"]: r for r in raw.records["commits"]}
+    assert by_sha["a"]["co_authors"] == [claude, service]
+    assert "co_authors" not in by_sha["b"]                              # absent means no co-authors
+    assert [by_sha[s]["co_authors"] for s in "cde"] == [[], [], []]
+    assert by_sha["f"]["co_authors"] == [claude, {"login": None, "name": "X", "email": None},
+                                         {"login": None, "name": "Seven", "email": None}]
+    assert [co_authors(by_sha[s]) for s in "ab"] == [[claude, service], []]

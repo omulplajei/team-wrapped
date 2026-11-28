@@ -18,11 +18,18 @@ def actor(login, typename="User"):
     return {"login": login, "__typename": typename} if login else None
 
 
+def git_actor(login="ada-dev", name="Ada", email="ada@example.com", typename="User"):
+    """A GitActor node (`author`, or one of `authors`)."""
+    return {"name": name, "email": email, "user": actor(login, typename)}
+
+
 def commit_node(oid, at="2026-03-14T09:30:00Z", login="ada-dev", name="Ada", email="ada@example.com",
-                parents=1, additions=10, deletions=2, files=3, pr=None, typename="User"):
+                parents=1, additions=10, deletions=2, files=3, pr=None, typename="User", co_authors=()):
+    """Like GitHub, `authors` lists the primary author first, then the `Co-authored-by:` trailers."""
+    author = git_actor(login, name, email, typename)
     return {"oid": oid, "committedDate": at, "authoredDate": at, "additions": additions, "deletions": deletions,
             "changedFilesIfAvailable": files, "parents": {"totalCount": parents},
-            "author": {"name": name, "email": email, "user": actor(login, typename)},
+            "author": author, "authors": {"nodes": [author, *co_authors]},
             "associatedPullRequests": {"nodes": [{"number": pr}] if pr else []}}
 
 

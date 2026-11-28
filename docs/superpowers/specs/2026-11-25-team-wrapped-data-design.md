@@ -89,7 +89,7 @@ Stored as JSON-lines at `data/raw/<repo>/<metric>.jsonl`. Records are keyed by `
 
 | Metric | Fields |
 |---|---|
-| **commit** | repo, sha, author login (nullable), author name, author email, authored and committed timestamps, `is_merge`, linked PR number if known. Enriched: additions, deletions, files changed |
+| **commit** | repo, sha, author login (nullable), author name, author email, authored and committed timestamps, `is_merge`, linked PR number if known, co-authors (login, name, email of each `Co-authored-by:` author). Enriched: additions, deletions, files changed |
 | **pull_request** | repo, number, author login, created, merged, closed, state, base branch, labels, draft, comment count, review count. Enriched: commit count, changed files, additions, deletions |
 | **review** | repo, PR number, reviewer login, state (approved, changes requested, commented), submitted timestamp |
 | **comment** | repo, PR number, author login, kind (review comment on code, or conversation comment), created timestamp, `comment_id`, `in_reply_to_id`, `thread_root_id` |
@@ -102,13 +102,15 @@ One JSON object per line. Timestamps are ISO 8601 UTC strings (`2026-03-14T09:30
 
 | File | Fields (`?` = absent until enriched) |
 |---|---|
-| `commits.jsonl` | `repo`, `sha`, `author_login` (null when unlinked), `author_name`, `author_email`, `authored_at`, `committed_at`, `is_merge`, `pr_number` (null if unknown), `enriched` (bool), `additions?`, `deletions?`, `files_changed?` |
+| `commits.jsonl` | `repo`, `sha`, `author_login` (null when unlinked), `author_name`, `author_email`, `authored_at`, `committed_at`, `is_merge`, `pr_number` (null if unknown), `enriched` (bool), `additions?`, `deletions?`, `files_changed?`, `co_authors?` (below) |
 | `pull_requests.jsonl` | `repo`, `number`, `author_login`, `created_at`, `merged_at` (null), `closed_at` (null), `state` (`open`, `closed`, `merged`), `base_branch`, `labels`, `draft`, `comment_count`, `review_count`, `enriched` (bool), `commit_count?`, `changed_files?`, `additions?`, `deletions?` |
 | `reviews.jsonl` | `repo`, `pr_number`, `review_id?`, `reviewer_login`, `state` (`approved`, `changes_requested`, `commented`), `submitted_at` |
 | `comments.jsonl` | `repo`, `pr_number`, `author_login`, `kind` (`review` for code comments, `conversation`), `created_at`, `comment_id`, `in_reply_to_id` (null), `thread_root_id` (null for conversation comments) |
 | `status.json` (one per repo) | `{"<metric>": "complete" | "partial" | "never-run" | "failed"}`. A missing file means every metric is `never-run`; a metric missing from an existing file whose jsonl exists counts as `complete` |
 
 Layout: `data/raw/<repo>/<file>`. The aggregator never writes to `raw/`.
+
+Co-authors. `co_authors` is a list, possibly empty, of `{"login", "name", "email"}`, one per author of the commit after the first: GitHub lists the primary author first, then the `Co-authored-by:` trailers. `login` is null for a co-author not linked to a GitHub account (a Bot's login gets the `[bot]` suffix, as everywhere); `name` and `email` are null when GitHub gives none. The primary author and repeated trailers are left out (a co-author sharing a login or an email with one already listed is a repeat). The field is absent in records written by older collectors, which means no co-authors. The aggregator reads it defensively: a value that is not a list counts as an empty list, an entry that is not a mapping or names nobody is dropped, and a field that is not text counts as null; none of these make the line corrupt.
 
 Keys and repeated records. Files are append-only (section 10), so a file may hold the same key more than once, for example a cheap commit record followed by its enriched version. The aggregator keeps the last record per key (first-seen order is kept, so output stays deterministic): commits by (`repo`, `sha`), pull requests by (`repo`, `number`), comments by (`repo`, `comment_id`), reviews by (`repo`, `review_id`). A review record without `review_id` falls back to (`pr_number`, `reviewer_login`, `submitted_at`, `state`). A record whose key field is missing or of the wrong type (`sha` text, `number` and `pr_number` whole numbers, `comment_id` and `review_id` whole number or text) is skipped and counted as a corrupt line.
 

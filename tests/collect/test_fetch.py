@@ -1,9 +1,10 @@
 """Commit and pull request fetchers against canned GraphQL pages."""
 import datetime
 
-from collect_fakes import (comment_node, commit_node, history, make_client, page, pr_node, review_comment_node,
-                           review_node, search, thread)
+from collect_fakes import (comment_node, commit_node, git_actor, history, make_client, page, pr_node,
+                           review_comment_node, review_node, search, thread)
 
+from team_wrapped.collect import queries
 from team_wrapped.collect.commits import fetch_commits
 from team_wrapped.collect.pull_requests import PullRequestBatch, fetch_pull_requests
 
@@ -37,7 +38,7 @@ def test_commits_paginate_and_map_fields():
     assert a1 == {"repo": "sample-api", "sha": "a1", "author_login": "ada-dev", "author_name": "Ada",
                   "author_email": "ada@example.com", "authored_at": "2026-03-14T09:30:00Z",
                   "committed_at": "2026-03-14T09:30:00Z", "is_merge": False, "pr_number": 7, "enriched": True,
-                  "additions": 10, "deletions": 2, "files_changed": 3}
+                  "additions": 10, "deletions": 2, "files_changed": 3, "co_authors": []}
     assert m1["is_merge"] is True and m1["authored_at"] == "2026-03-15T09:30:00Z"      # offsets become UTC
     assert u1["author_login"] is None and u1["author_email"] == "who@example.com"
     assert b1["author_login"] == "dependabot[bot]"        # GitHub noreply address of a bot
@@ -49,6 +50,59 @@ def test_commits_of_an_empty_repository():
     records = []
     fetch_commits(gh, "sample-org", "sample-empty", None, None, records)
     assert records == []
+
+
+def test_the_history_query_asks_for_every_author_and_keeps_the_page_size():
+    gh, fake = make_client(lambda q, v: history([]))
+    fetch_commits(gh, "sample-org", "sample-api", None, None, [])
+    query, variables = fake.calls[0]
+    assert "authors(first: 10) { nodes { name email user { login __typename } } }" in query
+    assert "author { name email user { login __typename } }" in query
+    assert variables["first"] == queries.COMMIT_PAGE == 100
+
+
+def test_co_authors_are_every_author_after_the_first():
+    node = commit_node("c", co_authors=[
+        git_actor("claude", "Claude", "noreply@example.com"),
+        git_actor("Copilot", "Copilot", "198982749+Copilot@users.noreply.github.com", typename="Bot"),
+        git_actor(None, "Deployment Script", "deploy@example.com"),
+        git_actor(None, "Helper", "77+helper-robot[bot]@users.noreply.github.com"),
+    ])
+    gh, _ = make_client(lambda q, v: history([node]))
+    records = []
+    fetch_commits(gh, "sample-org", "sample-api", None, None, records)
+    assert records[0]["author_login"] == "ada-dev"
+    assert records[0]["co_authors"] == [
+        {"login": "claude", "name": "Claude", "email": "noreply@example.com"},
+        {"login": "Copilot[bot]", "name": "Copilot", "email": "198982749+Copilot@users.noreply.github.com"},
+        {"login": None, "name": "Deployment Script", "email": "deploy@example.com"},     # unlinked: kept, no login
+        {"login": "helper-robot[bot]", "name": "Helper", "email": "77+helper-robot[bot]@users.noreply.github.com"},
+    ]
+
+
+def test_co_authors_are_deduplicated_against_the_primary_author_and_each_other():
+    node = commit_node("c", login="ada-dev", email="ada@example.com", co_authors=[
+        git_actor("Ada-Dev", "Ada again", "other@example.com"),           # same login, other case
+        git_actor(None, "Ada (laptop)", "ADA@example.com"),               # same email, unlinked
+        git_actor("claude", "Claude", "noreply@example.com"),
+        git_actor("claude", "Claude", "noreply@example.com"),             # a repeated trailer
+        git_actor(None, "Same Name", None), git_actor(None, "Same Name", None),
+        git_actor(None, None, None), "not a node",
+    ])
+    gh, _ = make_client(lambda q, v: history([node]))
+    records = []
+    fetch_commits(gh, "sample-org", "sample-api", None, None, records)
+    assert records[0]["co_authors"] == [{"login": "claude", "name": "Claude", "email": "noreply@example.com"},
+                                        {"login": None, "name": "Same Name", "email": None}]
+
+
+def test_a_node_without_authors_has_no_co_authors():
+    node = commit_node("c")
+    del node["authors"]
+    gh, _ = make_client(lambda q, v: history([node, {**commit_node("d"), "authors": {"nodes": None}}]))
+    records = []
+    fetch_commits(gh, "sample-org", "sample-api", None, None, records)
+    assert [r["co_authors"] for r in records] == [[], []]
 
 
 def test_bot_authors_get_the_bot_suffix():

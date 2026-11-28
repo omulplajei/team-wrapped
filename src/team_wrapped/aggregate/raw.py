@@ -43,6 +43,30 @@ def _optional_scalar(value) -> bool:
     return value is None or _scalar(value)
 
 
+def _text(value) -> str | None:
+    return value if isinstance(value, str) and value.strip() else None
+
+
+def clean_co_authors(value) -> list:
+    """A commit's `co_authors` made safe: anything but a list is an empty list, entries that are not mappings or
+    name nobody are dropped, and a field that is not text becomes null."""
+    if not isinstance(value, list):
+        return []
+    found = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            continue
+        who = {f: _text(entry.get(f)) for f in ("login", "name", "email")}
+        if any(who.values()):
+            found.append(who)
+    return found
+
+
+def co_authors(record: dict) -> list:
+    """The co-authors of a commit record (none when the field is absent, as in records from older collectors)."""
+    return clean_co_authors(record.get("co_authors"))
+
+
 def record_identity(metric: str, record: dict):
     """The de-duplication key of a record (without the repo), or None when a key field is missing or has the wrong type."""
     if metric == "commits":
@@ -80,6 +104,8 @@ def read_jsonl(path: Path, repo: str, metric: str, key: str, corrupt: dict) -> l
             bad += 1
             continue
         record["repo"] = repo
+        if metric == "commits" and "co_authors" in record:
+            record["co_authors"] = clean_co_authors(record["co_authors"])
         records[identity] = record
     if bad:
         corrupt[key] = bad
