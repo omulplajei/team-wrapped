@@ -1,4 +1,4 @@
-"""`gh api graphql` wrapper (spec section 8): one transport for every collector call.
+"""`gh api` wrapper (spec section 8): one transport for every collector call (GraphQL, plus a small REST helper).
 
 No token handling here: `gh` reads its own credentials (`gh auth login`). Calls are argument lists, never a shell.
 Errors are classified so the collector can decide per repository and metric:
@@ -24,6 +24,9 @@ _TOKEN = re.compile(r"\b(gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)|((?:t
 _TRANSIENT = re.compile(r"HTTP 5\d\d|\b50[234]\b|timed? ?out|timeout|connection (reset|refused)|EOF|"
                         r"temporarily unavailable|could not connect|could not resolve host|network is unreachable|no such host",
                         re.IGNORECASE)
+
+
+_REST_PATH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*")
 
 
 class GhError(Exception):
@@ -108,7 +111,16 @@ class GitHub:
 
     def graphql(self, query: str, **variables) -> dict:
         """The `data` object of the response. Raises one of the errors above."""
-        args = _arguments(query, variables)
+        return self._request(_arguments(query, variables), self._call)
+
+    def rest(self, path: str) -> dict:
+        """The JSON object `gh api <path>` returns (a GET), e.g. `apps/<slug>`. Same errors, retries and budget as
+        `graphql`. Only plain relative paths are accepted: no query string, no `..`, nothing gh would read as a flag."""
+        if path == "graphql" or not _REST_PATH.fullmatch(path or "") or ".." in path.split("/"):
+            raise ValueError(f"not a plain API path: {path!r}")
+        return self._request(["gh", "api", path], self._call_rest)
+
+    def _request(self, args: list, call) -> dict:
         attempt = 0
         while True:
             if self.remaining is not None and self.remaining <= 0:
@@ -117,7 +129,7 @@ class GitHub:
                 raise BudgetExhausted(f"request budget of {self.max_requests} reached")
             self.requests += 1
             try:
-                return self._call(args)
+                return call(args)
             except Transient:
                 if attempt >= self.retries:
                     raise
@@ -149,6 +161,19 @@ class GitHub:
         if code == 0 and body is None:
             raise GhError("gh returned no JSON")
         raise self._classify_text(f"{stderr} {stdout if body is None else ''}")
+
+    def _call_rest(self, args: list) -> dict:
+        code, stdout, stderr = self.runner(args)
+        try:
+            body = json.loads(stdout) if stdout and stdout.strip() else None
+        except ValueError:
+            body = None
+        if code == 0:
+            if isinstance(body, dict):
+                return body
+            raise GhError("gh returned no JSON object")
+        message = body.get("message") if isinstance(body, dict) and isinstance(body.get("message"), str) else ""
+        raise self._classify_text(f"{stderr} {message}")
 
     def _classify_graphql(self, errors: list) -> GhError:
         first = errors[0] if isinstance(errors[0], dict) else {"message": str(errors[0])}

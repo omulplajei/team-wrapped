@@ -129,3 +129,46 @@ def test_missing_gh_is_a_clear_error(monkeypatch):
     monkeypatch.setattr(github.subprocess, "run", missing)
     with pytest.raises(GhError, match="gh auth login"):
         GitHub().graphql("q")
+
+
+def test_rest_calls_gh_api_with_the_path_and_returns_the_object():
+    gh, runner, _ = client((0, json.dumps({"id": 42, "slug": "sample-bot"}), ""))
+    assert gh.rest("apps/sample-bot") == {"id": 42, "slug": "sample-bot"}
+    assert runner.calls == [["gh", "api", "apps/sample-bot"]]
+    assert gh.requests == 1
+
+
+@pytest.mark.parametrize("path", ["", "graphql", "/apps/x", "apps/../user", "apps/x?per_page=1", "apps/x y", "-X"])
+def test_rest_refuses_paths_that_are_not_plain_api_paths(path):
+    gh, runner, _ = client()
+    with pytest.raises(ValueError):
+        gh.rest(path)
+    assert runner.calls == []
+
+
+@pytest.mark.parametrize("response, error", [
+    ((1, json.dumps({"message": "Not Found"}), "gh: Not Found (HTTP 404)"), NotFound),
+    ((1, json.dumps({"message": "Forbidden"}), "gh: Forbidden (HTTP 403)"), Forbidden),
+    ((1, "", "gh: API rate limit exceeded for user (HTTP 403)"), RateLimited),
+    ((0, "[1, 2]", ""), GhError),
+    ((0, "not json", ""), GhError),
+])
+def test_rest_classifies_errors_like_graphql(response, error):
+    gh, _, _ = client(response, retries=0)
+    with pytest.raises(error):
+        gh.rest("apps/sample-bot")
+
+
+def test_rest_retries_transient_errors_and_counts_against_the_budget():
+    gh, runner, sleeps = client((1, "", "gh: HTTP 502"), (0, json.dumps({"id": 1}), ""), max_requests=2)
+    assert gh.rest("apps/sample-bot") == {"id": 1}
+    assert len(runner.calls) == 2 and sleeps == [2.0] and gh.requests == 2
+    with pytest.raises(BudgetExhausted):
+        gh.rest("apps/sample-bot")
+
+
+def test_rest_errors_never_carry_tokens():
+    gh, _, _ = client((1, "", "gh: HTTP 401 bad credentials token ghp_abc123"), retries=0)
+    with pytest.raises(Forbidden) as caught:
+        gh.rest("apps/sample-bot")
+    assert "ghp_abc123" not in str(caught.value)
