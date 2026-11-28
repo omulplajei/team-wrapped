@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import sys
 from pathlib import Path
 
 from .aggregate import aggregate
-from .collect import collect, describe, make_plan
+from .collect import DEFAULT_OVERLAP_DAYS, collect, describe, describe_fetches, make_plan
 from .collect.report import run_summary, status_report
 from .config import load_config
 from .derive import write_repos
@@ -62,11 +63,14 @@ def _cmd_collect(args) -> int:
     config = load_config(data_root / "config.yml")
     plan = make_plan(config, args.repo, args.metric, args.since, args.until)
     if args.dry_run:
-        for line in describe(plan):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        for line in describe(plan) + describe_fetches(data_root, plan, now, full=args.full,
+                                                      overlap_days=args.overlap_days):
             print(line)
         print(f"dry run: {len(plan.repos)} repositories x {len(plan.metrics)} metrics, no API calls made")
         return 0
-    result = collect(data_root, config, GitHub(max_requests=args.max_requests), plan, avatars=not args.no_avatars)
+    result = collect(data_root, config, GitHub(max_requests=args.max_requests), plan, avatars=not args.no_avatars,
+                     full=args.full, overlap_days=args.overlap_days)
     print()
     for line in run_summary(result, plan.metrics):
         print(line)
@@ -84,6 +88,13 @@ def _positive(text: str) -> int:
     value = int(text)
     if value < 1:
         raise argparse.ArgumentTypeError("must be at least 1")
+    return value
+
+
+def _days(text: str) -> int:
+    value = int(text)
+    if value < 0:
+        raise argparse.ArgumentTypeError("--overlap-days must be 0 or more")
     return value
 
 
@@ -119,6 +130,10 @@ def main(argv: list[str] | None = None) -> int:
     col.add_argument("--max-requests", type=_positive, help="stop cleanly after N gh calls")
     col.add_argument("--no-avatars", action="store_true", help="do not download avatars")
     col.add_argument("--dry-run", action="store_true", help="print the plan and make no API calls")
+    col.add_argument("--full", action="store_true",
+                     help="ignore the checkpoints and fetch the whole window (new checkpoints are still written)")
+    col.add_argument("--overlap-days", type=_days, default=DEFAULT_OVERLAP_DAYS,
+                     help=f"days before the last covered commit time fetched again (default: {DEFAULT_OVERLAP_DAYS})")
     stat = sub.add_parser("status", help="show per repo and metric collection status (no network)")
     stat.add_argument("--root", default=".", help="repository root (default: current directory)")
     stat.add_argument("--data", default="data", help="data folder under the root (default: data)")

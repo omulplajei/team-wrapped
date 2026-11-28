@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..aggregate.raw import load_raw
+from .checkpoint import read_checkpoints
 from .store import read_details
 
 
@@ -49,4 +50,33 @@ def status_report(data_root, config) -> list:
     lines = table(["repo", *config.metrics, ""], rows)
     if raw.corrupt:
         lines.append("corrupt lines skipped: " + ", ".join(f"{k} ({v})" for k, v in sorted(raw.corrupt.items())))
-    return lines + notes
+    return lines + notes + checkpoint_report(data_root, config)
+
+
+def _minute(moment) -> str:
+    return moment.strftime("%Y-%m-%d %H:%M")
+
+
+def checkpoint_report(data_root, config) -> list:
+    """Per repository, the last sync and covered range of each metric's checkpoint (UTC). Neighbouring metrics
+    with the same checkpoint share a row, so pull requests, reviews and comments usually take one."""
+    rows, notes = [], []
+    for repo in config.repos:
+        checkpoints, warnings = read_checkpoints(Path(data_root) / "raw" / repo)
+        notes += [f"{repo}: {warning}" for warning in warnings]
+        groups = []
+        for metric in config.metrics:
+            entry = checkpoints.get(metric)
+            if entry is None:
+                continue
+            if groups and groups[-1][1] == entry:
+                groups[-1][0].append(metric)
+            else:
+                groups.append(([metric], entry))
+        for metrics, entry in groups:
+            covered = f"{entry.since or 'beginning'} .. {_minute(entry.covered_to)}"
+            rows.append([repo, ", ".join(metrics), _minute(entry.synced_at), covered])
+    if not rows:
+        return ["", "checkpoints: none yet (the next collect fetches in full)", *notes]
+    return ["", "checkpoints (UTC; the next collect fetches only what changed since)",
+            *table(["repo", "metrics", "last sync", "covered"], rows), *notes]

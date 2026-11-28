@@ -1,4 +1,6 @@
 """`collect` and `status` on the command line, with a fake gh."""
+import json
+
 import pytest
 from collect_fakes import commit_node, history, make_client, not_found, pr_node, search
 
@@ -103,3 +105,76 @@ def test_status_reads_statuses_and_counts_without_network(root, fake, capsys):
 def test_status_before_any_collection(root, capsys):
     assert main(["status", "--root", str(root)]) == 0
     assert capsys.readouterr().out.count("never-run") == 8
+
+
+def write_checkpoint_file(root, repo="sample-api", covered_to="2026-11-13T12:00:00Z", **metrics):
+    entry = {"synced_at": covered_to, "since": "2026-01-01", "until": "2026-12-31", "covered_to": covered_to,
+             "overlap_days": 7}
+    folder = root / "data" / "raw" / repo
+    folder.mkdir(parents=True, exist_ok=True)
+    stored = {m: dict(entry) for m in ("commits", "pull_requests", "reviews", "comments")}
+    for metric in ("pull_requests", "reviews", "comments"):
+        stored[metric]["overlap_days"] = 1
+    stored.update(metrics)
+    (folder / "checkpoint.json").write_text(json.dumps(stored))
+
+
+def test_dry_run_prints_full_or_incremental_per_repo_and_metric(root, fake, capsys):
+    write_checkpoint_file(root)
+    assert main(["collect", "--root", str(root), "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert fake == {}
+    assert "sample-api commits: incremental from 2026-11-06" in out
+    assert "sample-api reviews: incremental from 2026-11-12" in out
+    assert "sample-web commits: full" in out and "sample-web comments: full" in out
+    assert main(["collect", "--root", str(root), "--dry-run", "--overlap-days", "0"]) == 0
+    assert "sample-api commits: incremental from 2026-11-13" in capsys.readouterr().out
+    assert main(["collect", "--root", str(root), "--dry-run", "--full"]) == 0
+    assert "sample-api commits: full" in capsys.readouterr().out
+
+
+def test_full_and_overlap_reach_the_collector(root, fake, monkeypatch, capsys):
+    seen = {}
+
+    def spy(*args, **kwargs):
+        seen.update(kwargs)
+        raise SystemExit(0)
+    monkeypatch.setattr(cli, "collect", spy)
+    with pytest.raises(SystemExit):
+        main(["collect", "--root", str(root), "--full", "--overlap-days", "3"])
+    assert seen["full"] is True and seen["overlap_days"] == 3
+    with pytest.raises(SystemExit):
+        main(["collect", "--root", str(root)])
+    assert seen["full"] is False and seen["overlap_days"] == 7
+
+
+def test_negative_overlap_is_rejected(root, capsys):
+    with pytest.raises(SystemExit):
+        main(["collect", "--root", str(root), "--overlap-days", "-1"])
+    assert "overlap" in capsys.readouterr().err
+
+
+def test_status_shows_the_last_sync_and_covered_range(root, fake, capsys):
+    main(["collect", "--root", str(root), "--no-avatars"])
+    write_checkpoint_file(root, covered_to="2026-11-13T12:00:00Z",
+                          comments={"synced_at": "2026-11-01T08:30:00Z", "since": "2026-03-01", "until": "2026-12-31",
+                                    "covered_to": "2026-11-01T08:30:00Z", "overlap_days": 1})
+    capsys.readouterr()
+    assert main(["status", "--root", str(root)]) == 0
+    out = capsys.readouterr().out
+    section = out[out.index("checkpoints"):]
+    rows = [line.split("  ") for line in section.splitlines()]
+    rows = [[cell.strip() for cell in row if cell.strip()] for row in rows]
+    assert ["sample-api", "commits", "2026-11-13 12:00", "2026-01-01 .. 2026-11-13 12:00"] in rows
+    assert ["sample-api", "pull_requests, reviews", "2026-11-13 12:00", "2026-01-01 .. 2026-11-13 12:00"] in rows
+    assert ["sample-api", "comments", "2026-11-01 08:30", "2026-03-01 .. 2026-11-01 08:30"] in rows
+    assert not any(row and row[0] == "sample-web" for row in rows)       # failed: no checkpoint
+    assert max(len(line) for line in section.splitlines()) <= 100
+
+
+def test_status_reports_an_unreadable_checkpoint(root, capsys):
+    folder = root / "data" / "raw" / "sample-api"
+    folder.mkdir(parents=True)
+    (folder / "checkpoint.json").write_text("{broken")
+    assert main(["status", "--root", str(root)]) == 0
+    assert "sample-api: checkpoint.json unreadable" in capsys.readouterr().out

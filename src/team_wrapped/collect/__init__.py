@@ -8,6 +8,9 @@ atomically, so a stopped run keeps every finished unit. A unit ends as:
 - `partial`: some was fetched (rate limit, request budget, retries used up, or a capped search); the reason is in
   status-detail.json. A rate limit or the budget also stops the run; units not reached are left untouched.
 - `failed`: the repository is missing or not accessible, or GitHub rejected the query; nothing is written.
+
+A unit that ends `complete` also advances its entry in checkpoint.json, so the next run fetches only what changed
+since (checkpoint.py); `full` ignores the checkpoints.
 """
 from __future__ import annotations
 
@@ -19,12 +22,14 @@ from ..config import Config
 from ..github import BudgetExhausted, GhError, NotFound, Forbidden, RateLimited, Transient
 from ..scenes.loader import LoadError
 from .avatars import download_avatars
+from .checkpoint import narrowest, plan_commits, plan_pull_requests, read_checkpoints, write_checkpoint
 from .commits import fetch_commits
 from .common import iso, utc_bounds
 from .pull_requests import PullRequestBatch, fetch_pull_requests
 from .store import write_records, write_status
 
 PR_METRICS = ("pull_requests", "reviews", "comments")
+DEFAULT_OVERLAP_DAYS = 7
 
 
 @dataclass(frozen=True)
@@ -106,16 +111,53 @@ def _stop(error) -> bool:
     return isinstance(error, (RateLimited, BudgetExhausted))
 
 
-def _finish(folder, repo, metric, status, records, reason, plan, collected_at, units, log):
+def unit_fetches(folder, plan: Plan, now, *, full=False, overlap_days=DEFAULT_OVERLAP_DAYS) -> tuple:
+    """(commits Fetch or None, pull request Fetch or None, [warning]) for one repository of `plan`."""
+    checkpoints, warnings = ({}, []) if full else read_checkpoints(folder)
+    commits = plan_commits(plan, checkpoints.get("commits"), now, overlap_days) if "commits" in plan.metrics \
+        else None
+    shared = [m for m in PR_METRICS if m in plan.metrics]
+    prs = plan_pull_requests(plan, narrowest([checkpoints.get(m) for m in shared]), now) if shared else None
+    return commits, prs, warnings
+
+
+def _what(fetch) -> str:
+    """How a unit's fetch is described in the plan: `full` or `incremental from <date>`."""
+    if fetch.mode == "full":
+        return "full"
+    if not fetch.pieces:
+        return "incremental, nothing to fetch (window already covered)"
+    return f"incremental from {fetch.since or 'the beginning'}"
+
+
+def describe_fetches(data_root, plan: Plan, now, *, full=False, overlap_days=DEFAULT_OVERLAP_DAYS) -> list:
+    """Per repository and metric, what a run would fetch (the dry run; reads checkpoints, no API calls)."""
+    lines = []
+    for repo in plan.repos:
+        commits, prs, warnings = unit_fetches(Path(data_root) / "raw" / repo, plan, now, full=full,
+                                              overlap_days=overlap_days)
+        lines += [f"{repo}: {warning}" for warning in warnings]
+        for metric in plan.metrics:
+            fetch = commits if metric == "commits" else prs
+            lines.append(f"{repo} {metric}: {_what(fetch)}{f' ({fetch.notice})' if fetch.notice else ''}")
+    return lines
+
+
+def _finish(folder, repo, metric, status, records, reason, plan, collected_at, units, log, fetch):
     count = len(records)
     if status != "failed":
         write_records(folder, repo, metric, records)
-    detail = {"collected_at": collected_at, "records": count, "window": {"since": plan.since, "until": plan.until}}
+    detail = {"collected_at": collected_at, "records": count, "window": {"since": plan.since, "until": plan.until},
+              "fetch": fetch.mode}
     if reason:
         detail["reason"] = reason
     write_status(folder, metric, status, detail)
+    if status == "complete":
+        write_checkpoint(folder, metric, fetch.checkpoint)
     units.append(Unit(repo, metric, status, count, reason))
-    log(f"{repo} {metric}: {status} ({count} records){f' - {reason}' if reason else ''}")
+    what = f"{count} records" if fetch.mode == "full" else \
+        f"{count} new/updated records, since {fetch.since or 'the beginning'}"
+    log(f"{repo} {metric}: {status} ({what}){f' - {reason}' if reason else ''}")
 
 
 def _outcome(error) -> tuple:
@@ -128,8 +170,9 @@ def _outcome(error) -> tuple:
 
 
 def collect(data_root, config: Config, gh, plan: Plan, *, avatars: bool = True, fetch=None, now=None,
-            log=print) -> Result:
-    """Fetch every unit of `plan` into <data_root>/raw, then (unless disabled) download avatars."""
+            log=print, full: bool = False, overlap_days: int = DEFAULT_OVERLAP_DAYS) -> Result:
+    """Fetch every unit of `plan` into <data_root>/raw, then (unless disabled) download avatars. `now` is the run
+    start: checkpoints record it and never claim coverage past it. `full` ignores existing checkpoints."""
     data_root = Path(data_root)
     now = now or datetime.datetime.now(datetime.timezone.utc)
     collected_at = iso(now)
@@ -139,27 +182,36 @@ def collect(data_root, config: Config, gh, plan: Plan, *, avatars: bool = True, 
         if result.stopped:
             break
         folder = data_root / "raw" / repo
+        commit_fetch, pr_fetch, warnings = unit_fetches(folder, plan, now, full=full, overlap_days=overlap_days)
+        for warning in warnings:
+            log(f"{repo}: {warning}")
         missing = None
-        if "commits" in plan.metrics:
+        if commit_fetch:
             records, error = [], None
             try:
-                fetch_commits(gh, plan.org, repo, plan.start, plan.end, records)
+                for since, until in commit_fetch.pieces:
+                    fetch_commits(gh, plan.org, repo, since, until, records)
             except GhError as caught:
                 error = caught
             status, reason = _outcome(error)
-            _finish(folder, repo, "commits", status, records, reason, plan, collected_at, result.units, log)
+            _finish(folder, repo, "commits", status, records, reason, plan, collected_at, result.units, log,
+                    commit_fetch)
             if isinstance(error, (NotFound, Forbidden)):
                 missing = reason
             if _stop(error):
                 result.stopped = str(error)
         pr_metrics = [m for m in PR_METRICS if m in plan.metrics]
-        if pr_metrics and not result.stopped:
+        if pr_fetch and not result.stopped:
             batch, error = PullRequestBatch(), None
             if missing:
                 error = NotFound(missing)
             else:
+                if pr_fetch.notice:
+                    log(f"{repo} pull requests: {pr_fetch.notice}")
                 try:
-                    fetch_pull_requests(gh, plan.org, repo, plan.start, plan.end, batch, now=now)
+                    for piece in pr_fetch.pieces:
+                        fetch_pull_requests(gh, plan.org, repo, piece.updated_from, piece.created_to, batch, now=now,
+                                            created_from=piece.created_from)
                 except GhError as caught:
                     error = caught
             status, reason = _outcome(error)
@@ -167,7 +219,7 @@ def collect(data_root, config: Config, gh, plan: Plan, *, avatars: bool = True, 
                 status, reason = "partial", "; ".join(batch.notes)
             for metric in pr_metrics:
                 _finish(folder, repo, metric, status, getattr(batch, metric), reason, plan, collected_at,
-                        result.units, log)
+                        result.units, log, pr_fetch)
             if _stop(error):
                 result.stopped = str(error)
     done = {(u.repo, u.metric) for u in result.units}
