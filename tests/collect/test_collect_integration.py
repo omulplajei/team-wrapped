@@ -2,8 +2,8 @@
 import datetime
 import json
 
-from collect_fakes import (comment_node, commit_node, history, make_client, page, pr_node, review_comment_node,
-                           review_node, search, thread)
+from collect_fakes import (comment_node, commit_node, git_actor, history, make_client, page, pr_node,
+                           review_comment_node, review_node, search, thread)
 
 from team_wrapped.aggregate import aggregate
 from team_wrapped.collect import collect, make_plan
@@ -70,3 +70,61 @@ def test_collect_then_aggregate(tmp_path):
     assert meta["status"]["sample-web"] == {m: "complete" for m in ("commits", "pull_requests", "reviews", "comments")}
     text = "".join(p.read_text() for p in derived.iterdir())
     assert "@" not in text and "Someone" not in text
+
+
+AI_CONFIG = CONFIG + """bot_patterns: ['*[bot]', claude, cursoragent, 'Deployment Script']
+bot_names: {claude: Claude, cursoragent: Cursor}
+"""
+
+
+def co_author_route(query, variables):
+    if "history(" in query:
+        if variables["name"] == "sample-web":
+            return history([])
+        return history([
+            commit_node("a1", at="2026-03-10T09:00:00Z", additions=100, deletions=10, files=4, co_authors=[
+                git_actor("claude", "Claude", "claude@example.com"),
+                git_actor("pair-dev", "Pair", "pair@example.com"),
+                git_actor(None, "Deployment Script", "deploy@example.com"),
+                git_actor("ada-dev", "Ada", "ada@example.com")]),                  # the author again: dropped
+            commit_node("a2", at="2026-06-11T09:00:00Z", login="grace-codes", email="grace@example.com", additions=5,
+                        deletions=1, files=1, co_authors=[git_actor("cursoragent", "Cursor Agent", "cursor@example.com"),
+                                                          git_actor("claude", "Claude", "claude@example.com")]),
+        ])
+    if "search(" in query:
+        return search([])
+    raise AssertionError(query)
+
+
+def test_collect_then_aggregate_counts_co_authors_as_contributors(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "config.yml").write_text(AI_CONFIG)
+    config = load_config(data / "config.yml")
+    gh, fake = make_client(co_author_route)
+    urls = []
+    result = collect(data, config, gh, make_plan(config), fetch=lambda url: urls.append(url) or ("image/png", b"png"),
+                     now=datetime.datetime(2026, 11, 27, tzinfo=UTC), log=lambda s: None)
+    assert not result.failed and result.avatars_failed == []
+    assert all("authors(first: 10)" in q for q, _ in fake.calls if "history(" in q)
+    raw = [json.loads(line) for line in (data / "raw" / "sample-api" / "commits.jsonl").read_text().splitlines()]
+    assert [len(r["co_authors"]) for r in raw] == [3, 2]
+    assert sorted(u.split("/")[-1] for u in urls) == [f"{n}.png?size=200" for n in
+                                                      ("ada-dev", "claude", "cursoragent", "grace-codes", "pair-dev")]
+    aggregate(data, now=datetime.datetime(2026, 11, 27, tzinfo=UTC))
+    derived = data / "derived"
+    contributors = json.loads((derived / "contributors.json").read_text())["scopes"]["all"]
+    assert contributors["by_kind"] == {"human": 3, "unlinked": 0, "bot": 3}
+    entries = {c.get("login", c.get("name")): c for c in contributors["list"]}
+    assert {k: (c["kind"], c.get("name")) for k, c in entries.items()} == {
+        "ada-dev": ("human", None), "grace-codes": ("human", None), "pair-dev": ("human", None),
+        "claude": ("bot", "Claude"), "cursoragent": ("bot", "Cursor"),
+        "Deployment Script": ("bot", "Deployment Script")}
+    assert entries["claude"]["avatar_file"] == "avatars/claude.png"
+    assert (entries["claude"]["first_activity"], entries["claude"]["last_activity"]) == ("2026-03-10", "2026-06-11")
+    summary = json.loads((derived / "summary.json").read_text())["scopes"]["all"]
+    assert summary["totals"]["commits"] == 2
+    volume = json.loads((derived / "delivery_volume.json").read_text())["scopes"]["all"]
+    assert volume["lines"] == {"total_additions": 105, "total_deletions": 11, "total_net": 94}
+    text = "".join(p.read_text() for p in derived.iterdir())
+    assert "@" not in text and "Pair" not in text and "Cursor Agent" not in text
