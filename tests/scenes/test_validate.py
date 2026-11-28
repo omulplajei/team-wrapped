@@ -121,6 +121,7 @@ def test_year_wrapped_on_sample(repo_root, sample_root):
         "curiosity-spring-cleaning": "partial",
         "capability-commits": "supported",
         "how-many-of-us": "supported",
+        "thank-you": "supported",
     }
     assert resolved.report.ok
     text = format_report(resolved.report)

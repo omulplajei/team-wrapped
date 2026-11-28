@@ -246,6 +246,24 @@ test("render: heading, one label per group, counters that follow the scene time"
   assert.deepStrictEqual(counts(), ["0", "0", "0"]);
 });
 
+test("render: the note sits between the heading and the stage and fades in with the heading", () => {
+  const NOTE = "Each box is a commit.";
+  const { tl, container } = render({ ...PARAMS, note: NOTE });
+  const [wrap] = container.children;
+  const kinds = wrap.children.map((e) => e.className);
+  assert.ok(kinds.indexOf("tw-cap-heading") + 1 === kinds.indexOf("tw-cap-note"));
+  assert.ok(kinds.indexOf("tw-cap-note") < kinds.indexOf("tw-cap-stage"));   // in flow: the stage gets the rest
+  assert.strictEqual(find(container, "tw-cap-note")[0].textContent, NOTE);
+  const fade = tl.calls.find((c) => c.kind === "from" && Array.isArray(c.targets) && c.targets.includes(find(container, "tw-cap-heading")[0]));
+  assert.ok(fade.targets.includes(find(container, "tw-cap-note")[0]));
+});
+
+test("render: no note param, an empty one or a non-string one renders no note", () => {
+  for (const note of [undefined, "", 5, null]) {
+    assert.strictEqual(find(render({ ...PARAMS, note }).container, "tw-cap-note").length, 0);
+  }
+});
+
 test("render: the legend lists only the categories present", () => {
   const { container } = render();
   assert.deepStrictEqual(find(container, "tw-cap-key-text").map((e) => e.textContent), ["Core", "Extension"]);

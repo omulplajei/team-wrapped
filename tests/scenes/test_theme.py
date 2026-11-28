@@ -44,6 +44,45 @@ def test_full_theme_is_loaded_and_merged_over_the_defaults(tmp_path):
     assert theme.backdrop_opacity == 0.4
 
 
+LOGOS = """
+logos:
+  color: assets/logo.png
+  mono-light: assets/bg1.png
+"""
+
+
+def test_logos_map_is_loaded(tmp_path):
+    folder = make_theme(tmp_path, yml=LOGOS)
+    theme = load_theme("brand", [tmp_path])
+    assert theme.logos == {"color": (folder / "assets" / "logo.png").resolve(),
+                           "mono-light": (folder / "assets" / "bg1.png").resolve()}
+    assert theme.logo is None
+    assert load_theme("default", [tmp_path]).logos == {}
+
+
+@pytest.mark.parametrize("yml, message", [
+    ("logos: [assets/logo.png]\n", "logos must be a mapping"),
+    ("logos:\n  Color: assets/logo.png\n", "logo name"),
+    ("logos:\n  1a: assets/logo.png\n", "logo name"),
+    ("logos:\n  a_b: assets/logo.png\n", "logo name"),
+    ("logos:\n  color: ../outside.png\n", "inside the theme folder"),
+    ("logos:\n  color: assets/missing.png\n", "not found"),
+    ("logos:\n  color: assets/notes.txt\n", "image file"),
+    ("logo: assets/logo.png\nlogos:\n  color: assets/sub/logo.png\n", "same file name"),
+])
+def test_invalid_logos_are_rejected(tmp_path, yml, message):
+    folder = make_theme(tmp_path, yml=yml, files=("logo.png", "notes.txt"))
+    (folder / "assets" / "sub").mkdir()
+    (folder / "assets" / "sub" / "logo.png").write_bytes(b"png")
+    with pytest.raises(LoadError, match=message):
+        load_theme("brand", [tmp_path])
+
+
+def test_the_same_file_may_be_logo_and_named_logo(tmp_path):
+    make_theme(tmp_path, yml="logo: assets/logo.png\nlogos:\n  color: assets/logo.png\n")
+    assert load_theme("brand", [tmp_path]).logos["color"].name == "logo.png"
+
+
 def test_css_overrides_only_lists_what_differs(tmp_path):
     make_theme(tmp_path, yml=FULL)
     css = css_overrides(load_theme("brand", [tmp_path]))

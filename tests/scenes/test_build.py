@@ -39,8 +39,9 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
         "curiosity-longest-conversation", "curiosity-most-reviewed-pr",
         "curiosity-most-commits-pr", "curiosity-spring-cleaning",
         "repos-touched", "we-changed-the-code", "capability-commits", "how-many-of-us",
+        "thank-you",
     ]
-    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 8.0, 6.0, 30.0, 14.0]
+    assert [s["duration"] for s in payload["scenes"]] == [7.0, 6.0, 8.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 8.0, 6.0, 30.0, 14.0, 8.0]
     assert scenes["we-shipped"]["partial"] == []
     assert scenes["we-changed-the-code"]["partial"] == ["delivery_volume.lines"]
     assert scenes["year-in-numbers"]["partial"] == ["delivery_volume.lines"]
@@ -63,7 +64,11 @@ def test_build_year_wrapped_on_sample(repo_root, sample_root, tmp_path):
     assert 'TeamWrapped.sceneTypes["sequence"]' in html
     assert 'TeamWrapped.sceneTypes["curiosity"]' in html
     assert 'TeamWrapped.sceneTypes["capability-flow"]' in html
-    assert 'TeamWrapped.sceneTypes["message"]' not in html   # only used types are inlined
+    assert 'TeamWrapped.sceneTypes["message"]' in html
+    assert scenes["capability-commits"]["params"]["note"].startswith("Each box is a commit")
+    assert scenes["thank-you"]["params"]["logo"] == "color"
+    assert scenes["thank-you"]["data"] == {} and scenes["thank-you"]["partial"] == []
+    assert payload["script"]["theme"] is None                   # default theme: no logos, so the scene is text only
     assert "export default" not in html
 
 
@@ -77,7 +82,7 @@ def test_build_skips_both_line_data_scenes_when_lines_are_missing(repo_root, sam
         "curiosity-busiest-month", "curiosity-busiest-day", "curiosity-longest-streak",
         "curiosity-longest-conversation", "curiosity-most-reviewed-pr",
         "curiosity-most-commits-pr", "curiosity-spring-cleaning",
-        "repos-touched", "capability-commits", "how-many-of-us"]
+        "repos-touched", "capability-commits", "how-many-of-us", "thank-you"]
 
 
 def test_build_fails_when_a_scene_is_unsupported(repo_root, sample_root, tmp_path):
@@ -457,6 +462,26 @@ def test_theme_is_applied_to_the_page(repo_root, sample_root, tmp_path):
         assert (result.out_dir / "assets" / "theme" / name).is_file()
     theme = read_payload(result.index)["script"]["theme"]
     assert theme == {"backdrop": {"images": ["assets/theme/bg%201.png", "assets/theme/bg2.png"], "opacity": 0.4}}
+
+
+def test_theme_logos_are_copied_and_exposed(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    add_theme(data, yml='logos:\n  color: assets/logo.png\n  mono: assets/bg 1.png\n')
+    result = build("year-wrapped", repo_root, data, tmp_path / "dist", theme="brand")
+    theme = read_payload(result.index)["script"]["theme"]
+    assert theme == {"logos": {"color": "assets/theme/logo.png", "mono": "assets/theme/bg%201.png"}}
+    for name in ("logo.png", "bg 1.png"):
+        assert (result.out_dir / "assets" / "theme" / name).is_file()
+    assert not (result.out_dir / "assets" / "theme" / "bg2.png").exists()
+    assert "tw-logo" not in result.index.read_text()           # no `logo`: no start/end screen logo
+
+
+def test_theme_with_backdrop_and_logos_exposes_both(repo_root, sample_root, tmp_path):
+    data = sample_copy(sample_root, tmp_path)
+    add_theme(data, yml=THEME_YML + "logos:\n  color: assets/logo.png\n")
+    theme = read_payload(build("year-wrapped", repo_root, data, tmp_path / "dist", theme="brand").index)["script"]["theme"]
+    assert theme["logos"] == {"color": "assets/theme/logo.png"}
+    assert theme["backdrop"]["opacity"] == 0.4
 
 
 def test_script_theme_key_selects_the_theme(repo_root, sample_root, tmp_path):

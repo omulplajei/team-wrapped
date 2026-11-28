@@ -126,6 +126,7 @@
     const inner = renderer.render({
       container: el, data: scene.data, params: scene.params, duration: scene.duration,
       partial: scene.partial, scope: scene.scope, period: payload.script.period,
+      theme: theme || null,           // {backdrop?, logos?} from the build, or null
       gsap, presets: TW.presets,
     });
 

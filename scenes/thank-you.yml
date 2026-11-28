@@ -1,0 +1,10 @@
+# Closing scene: a thank-you with the brand logo (shown only when the theme defines a logo named `color`).
+id: thank-you
+title: Thank you
+type: message
+requires: []
+duration: 8
+params:
+  text: "Thank you"
+  subtext: "To everyone who shipped, reviewed and looked after each other"
+  logo: color

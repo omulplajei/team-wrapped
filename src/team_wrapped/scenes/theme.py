@@ -41,7 +41,8 @@ _FAMILY = rf"\"[A-Za-z0-9 ._-]+\"|'[A-Za-z0-9 ._-]+'|{_WORD}(?: {_WORD})*"
 _FONT = re.compile(rf"(?:{_FAMILY})(?:\s*,\s*(?:{_FAMILY})){{0,9}}")
 _THEME_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 _IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg")
-_KEYS = {"name", "colors", "font", "logo", "backdrop"}
+_LOGO_NAME = re.compile(r"[a-z][a-z0-9-]*")
+_KEYS = {"name", "colors", "font", "logo", "logos", "backdrop"}
 _BACKDROP_KEYS = {"images", "opacity"}
 
 
@@ -51,6 +52,7 @@ class Theme:
     colors: dict
     font: str | None = None
     logo: Path | None = None
+    logos: dict = field(default_factory=dict)
     backdrop_images: list = field(default_factory=list)
     backdrop_opacity: float = 0.35
     dir: Path | None = None
@@ -123,6 +125,17 @@ def load_theme(name: str, roots) -> Theme:
 
     logo = _asset(found, data["logo"], "logo") if "logo" in data else None
 
+    given_logos = data.get("logos")
+    if given_logos is None:
+        given_logos = {}
+    if not isinstance(given_logos, dict):
+        raise LoadError(f"{found / 'theme.yml'}: logos must be a mapping of name to file")
+    logos = {}
+    for logo_name, value in given_logos.items():
+        if not isinstance(logo_name, str) or not _LOGO_NAME.fullmatch(logo_name):
+            raise LoadError(f"{found / 'theme.yml'}: logo name {logo_name!r} must be lowercase letters, digits and dashes")
+        logos[logo_name] = _asset(found, value, f"logo '{logo_name}'")
+
     backdrop = data.get("backdrop")
     if backdrop is None:
         backdrop = {}
@@ -137,7 +150,7 @@ def load_theme(name: str, roots) -> Theme:
 
     backdrop_images = [_asset(found, v, "backdrop image") for v in images]
     by_name: dict = {}
-    for path in dict.fromkeys(([logo] if logo else []) + backdrop_images):
+    for path in dict.fromkeys(([logo] if logo else []) + list(logos.values()) + backdrop_images):
         by_name.setdefault(path.name.casefold(), []).append(path.name)
     names = [n for group in by_name.values() if len(group) > 1 for n in group]
     if names:
@@ -148,6 +161,7 @@ def load_theme(name: str, roots) -> Theme:
         colors=colors,
         font=font,
         logo=logo,
+        logos=logos,
         backdrop_images=backdrop_images,
         backdrop_opacity=float(opacity),
         dir=found,

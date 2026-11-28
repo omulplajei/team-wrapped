@@ -28,4 +28,5 @@ scenes:
   - scene: capability-commits          # 6. the whole year in a postcard: every commit, per capability
     scope: all              # commit_flow only exists for scope all (it already holds one record per group)
     on_missing_data: skip   # needs commit_flow, which needs a window and groups in the config
-  - scene: how-many-of-us              # 7. people: the finale
+  - scene: how-many-of-us              # 7. people: the cast of the year
+  - scene: thank-you                   # 8. thank you

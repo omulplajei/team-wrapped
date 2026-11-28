@@ -12,6 +12,7 @@ requires:
     allow_partial: true
 params:
   heading: "The whole year in a postcard"
+  note: "Each box is a commit. The bigger the box, the bigger the change (lines of code)."
   groups: commit_flow.groups
   window: commit_flow.window
   # Optional: place the hexagons by hand instead of the automatic honeycomb (core in the middle).

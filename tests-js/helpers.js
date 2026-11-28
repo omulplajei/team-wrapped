@@ -43,4 +43,13 @@ function finishCountUps(tl) {
   tl.calls.filter((c) => c.kind === "to").forEach((c) => { c.target.v = c.vars.v; c.vars.onUpdate(); });
 }
 
-module.exports = { makeEl, loadRenderer, fakeTimeline, find, finishCountUps };
+// The context the player hands to a renderer's render(); override what a test cares about.
+function makeCtx(overrides = {}) {
+  const tl = overrides.tl || fakeTimeline();
+  return {
+    container: makeEl("section"), data: {}, params: {}, partial: [], duration: 8, scope: "all", period: "2026",
+    theme: null, gsap: { timeline: () => tl }, presets: require("../web/presets/presets.js"), ...overrides,
+  };
+}
+
+module.exports = { makeCtx, makeEl, loadRenderer, fakeTimeline, find, finishCountUps };

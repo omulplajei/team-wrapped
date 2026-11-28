@@ -320,6 +320,13 @@ export default {
     const heading = el("div", "tw-cap-heading", typeof params.heading === "string" ? params.heading : "");
     wrap.append(heading);
     const top = [heading];
+    // An optional one-line note under the heading. It is a normal flex child, so the stage (and with it the
+    // honeycomb, which is laid out from the stage's measured size) simply gets the remaining height.
+    if (typeof params.note === "string" && params.note !== "") {
+      const note = el("div", "tw-cap-note", params.note);
+      wrap.append(note);
+      top.push(note);
+    }
     if (Array.isArray(partial) && typeof params.groups === "string" && presets.isPartial(partial, params.groups)) {
       const note = el("div", "tw-cap-partial", "partial data");
       wrap.append(note);

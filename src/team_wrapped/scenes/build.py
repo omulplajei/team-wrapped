@@ -156,19 +156,23 @@ def build(script_id: str, repo_root, data_root, out_root, theme: str | None = No
 
     chosen = load_theme(theme or resolved.script.theme or "default",
                         [repo_root, repo_root / "data", data_root])
-    theme_files = list(dict.fromkeys(([chosen.logo] if chosen.logo else []) + list(chosen.backdrop_images)))
+    theme_files = list(dict.fromkeys(
+        ([chosen.logo] if chosen.logo else []) + list(chosen.logos.values()) + list(chosen.backdrop_images)))
     page_path = {path: "assets/theme/" + urllib.parse.quote(path.name) for path in theme_files}
 
     payload, skipped = _payload(resolved)
     if not payload["scenes"]:
         raise BuildError("no scenes left to play after skipping unsupported ones")
 
+    # The player gets only what scenes and the backdrop use: null when the theme has neither.
+    theme_payload = {}
     if chosen.backdrop_images:
-        payload["script"]["theme"] = {"backdrop": {
+        theme_payload["backdrop"] = {
             "images": [page_path[path] for path in chosen.backdrop_images],
-            "opacity": chosen.backdrop_opacity}}
-    else:
-        payload["script"]["theme"] = None
+            "opacity": chosen.backdrop_opacity}
+    if chosen.logos:
+        theme_payload["logos"] = {name: page_path[path] for name, path in chosen.logos.items()}
+    payload["script"]["theme"] = theme_payload or None
 
     payload["script"]["music"], music_file = _prepare_music(resolved.script.music, data_root)
 
