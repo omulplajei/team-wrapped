@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .aggregate import aggregate
 from .collect import DEFAULT_OVERLAP_DAYS, collect, describe, describe_fetches, make_plan
+from .collect.avatars import app_id_lookup, download_avatars, missing_avatars
 from .collect.report import run_summary, status_report
 from .config import load_config
 from .derive import write_repos
@@ -60,9 +61,35 @@ def _cmd_aggregate(args) -> int:
     return 0
 
 
+# collect flags that only make sense when repositories are fetched (refused with --avatars-only)
+_FETCH_FLAGS = [("repo", "--repo"), ("metric", "--metric"), ("since", "--since"), ("until", "--until"),
+                ("full", "--full"), ("max_requests", "--max-requests"), ("no_avatars", "--no-avatars")]
+
+
+def _cmd_avatars_only(args, data_root: Path, config) -> int:
+    used = [flag for name, flag in _FETCH_FLAGS if getattr(args, name) not in (None, False)]
+    if used:
+        print(f"error: --avatars-only reads the raw data already collected; it cannot be combined with "
+              f"{', '.join(used)}", file=sys.stderr)
+        return 2
+    if not (data_root / "raw").is_dir():
+        print(f"error: no raw data in {data_root / 'raw'}; run collect first", file=sys.stderr)
+        return 2
+    if args.dry_run:
+        count = len(missing_avatars(data_root, config))
+        print(f"dry run: {count} avatar{'' if count == 1 else 's'} would be downloaded, no API calls made")
+        return 0
+    failed = download_avatars(data_root, config, app_id=app_id_lookup(GitHub()))
+    if failed:
+        print(f"avatars failed (placeholder used): {', '.join(failed)}")
+    return 1 if failed else 0
+
+
 def _cmd_collect(args) -> int:
     data_root = Path(args.root) / args.data
     config = load_config(data_root / "config.yml")
+    if args.avatars_only:
+        return _cmd_avatars_only(args, data_root, config)
     plan = make_plan(config, args.repo, args.metric, args.since, args.until)
     if args.dry_run:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -131,6 +158,8 @@ def main(argv: list[str] | None = None) -> int:
     col.add_argument("--until", help="window end YYYY-MM-DD for this run (default: config until)")
     col.add_argument("--max-requests", type=_positive, help="stop cleanly after N gh calls")
     col.add_argument("--no-avatars", action="store_true", help="do not download avatars")
+    col.add_argument("--avatars-only", action="store_true",
+                     help="only download missing avatars for the raw data already collected (no repository fetching)")
     col.add_argument("--dry-run", action="store_true", help="print the plan and make no API calls")
     col.add_argument("--full", action="store_true",
                      help="ignore the checkpoints and fetch the whole window (new checkpoints are still written)")

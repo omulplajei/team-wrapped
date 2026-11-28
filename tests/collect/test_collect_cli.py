@@ -7,6 +7,7 @@ from collect_fakes import commit_node, history, make_client, not_found, pr_node,
 from team_wrapped import cli
 from team_wrapped.cli import main
 from team_wrapped.collect import avatars
+from team_wrapped.github import GitHub
 
 CONFIG = """org: sample-org
 repos: [sample-api, sample-web]
@@ -178,3 +179,81 @@ def test_status_reports_an_unreadable_checkpoint(root, capsys):
     (folder / "checkpoint.json").write_text("{broken")
     assert main(["status", "--root", str(root)]) == 0
     assert "sample-api: checkpoint.json unreadable" in capsys.readouterr().out
+
+
+def collected(root):
+    """Raw data from a normal run, without avatars."""
+    assert main(["collect", "--root", str(root), "--repo", "sample-api", "--no-avatars"]) == 0
+
+
+def test_avatars_only_downloads_missing_avatars_from_the_raw_data_without_fetching_repos(root, fake, capsys):
+    collected(root)
+    raw = root / "data" / "raw" / "sample-api"
+    before = {p.name: p.read_bytes() for p in raw.iterdir()}
+    fake.clear()
+    capsys.readouterr()
+    assert main(["collect", "--root", str(root), "--avatars-only"]) == 0
+    out = capsys.readouterr().out
+    assert fake["runner"].calls == []                       # nothing asked of GitHub: the account avatar worked
+    assert {p.name: p.read_bytes() for p in raw.iterdir()} == before
+    assert (root / "data" / "avatars" / "ada-dev.png").read_bytes() == b"png"
+    assert (root / "data" / "avatars" / "placeholder.png").is_file()
+    assert json.loads((root / "data" / "raw" / "avatars-failed.json").read_text()) == []
+    assert "avatars: 1 downloaded, 0 failed" in out
+
+
+def test_avatars_only_uses_the_app_route_for_bots_and_exits_1_on_failures(root, fake, monkeypatch, capsys):
+    folder = root / "data" / "raw" / "sample-api"
+    folder.mkdir(parents=True)
+    (folder / "commits.jsonl").write_text(json.dumps({"sha": "a", "author_login": "sample-bot[bot]"}) + "\n"
+                                          + json.dumps({"sha": "b", "author_login": "helper-bot[bot]"}) + "\n")
+
+    def fetch(url):
+        if url.startswith("https://github.com/"):
+            raise OSError("HTTP 404")
+        return "image/png", b"app"
+    monkeypatch.setattr(avatars, "fetch_url", fetch)
+
+    made = {}
+
+    def factory(**kwargs):
+        def runner(args):
+            made.setdefault("calls", []).append(args)
+            if args[2] == "apps/sample-bot":
+                return 0, json.dumps({"id": 5}), ""
+            return 1, json.dumps({"message": "Not Found"}), "gh: Not Found (HTTP 404)"
+        made["kwargs"] = kwargs
+        return GitHub(runner, sleep=lambda s: None, **kwargs)
+    monkeypatch.setattr(cli, "GitHub", factory)
+    assert main(["collect", "--root", str(root), "--avatars-only"]) == 1
+    out = capsys.readouterr().out
+    assert sorted(c[2] for c in made["calls"]) == ["apps/helper-bot", "apps/sample-bot"]
+    assert (root / "data" / "avatars" / "sample-bot_bot.png").read_bytes() == b"app"
+    assert json.loads((folder.parent / "avatars-failed.json").read_text()) == ["helper-bot[bot]"]
+    assert "avatars failed (placeholder used): helper-bot[bot]" in out
+
+
+def test_avatars_only_dry_run_counts_what_would_be_downloaded(root, fake, capsys):
+    collected(root)
+    fake.clear()
+    capsys.readouterr()
+    assert main(["collect", "--root", str(root), "--avatars-only", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert fake == {}
+    assert "dry run: 1 avatar would be downloaded" in out
+    assert not (root / "data" / "avatars").exists()
+    assert not (root / "data" / "raw" / "avatars-failed.json").exists()
+
+
+@pytest.mark.parametrize("args", [["--repo", "sample-api"], ["--metric", "commits"], ["--since", "2026-07-01"],
+                                  ["--until", "2026-07-01"], ["--full"], ["--max-requests", "5"], ["--no-avatars"]])
+def test_avatars_only_refuses_flags_about_fetching_repositories(root, fake, capsys, args):
+    assert main(["collect", "--root", str(root), "--avatars-only", *args]) == 2
+    err = capsys.readouterr().err
+    assert "--avatars-only" in err and args[0] in err
+    assert fake == {} and not (root / "data" / "raw").exists()
+
+
+def test_avatars_only_needs_raw_data(root, fake, capsys):
+    assert main(["collect", "--root", str(root), "--avatars-only"]) == 2
+    assert "run collect first" in capsys.readouterr().err
