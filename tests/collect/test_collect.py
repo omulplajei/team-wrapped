@@ -225,3 +225,28 @@ def test_empty_activity_is_complete(data):
     run(data, empty_routes)
     assert read(data, "sample-api", "status.json")["commits"] == "complete"
     assert read(data, "sample-api", "commits.jsonl") == []
+
+
+def test_bot_avatars_fall_back_to_the_app_lookup_through_the_same_client(data):
+    (data / "config.yml").write_text(CONFIG.replace("avatars: {download: false}\n", "repos: [sample-api]\n")
+                                     .replace("repos: [sample-api, sample-web]\n", ""))
+
+    def route(query, variables):
+        if query is None:                    # gh api apps/<name>: the REST lookup
+            return 0, json.dumps({"id": 77}), ""
+        if "history(" in query:
+            return history([commit_node("a1", login="sample-bot", typename="Bot")])
+        return empty_routes(query, variables)
+    urls = []
+
+    def fetch(url):
+        urls.append(url)
+        if url.startswith("https://github.com/sample-bot"):
+            raise OSError("HTTP 404")
+        return "image/png", b"png"
+    result, fake, _ = run(data, route, fetch=fetch)
+    assert result.avatars_failed == []
+    assert (None, {}) in fake.calls
+    assert urls[-1] == "https://avatars.githubusercontent.com/in/77?s=200"
+    assert (data / "avatars" / "sample-bot_bot.png").read_bytes() == b"png"
+    assert (data / "avatars" / "placeholder.png").is_file()

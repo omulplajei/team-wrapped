@@ -2,7 +2,10 @@
 
 Files are named exactly as the aggregator looks them up (`contributors.avatar_name` of the lower-cased login).
 A failed download leaves the contributor on the placeholder; failed logins are listed in raw/avatars-failed.json.
-Bots use their app's account name (`renovate[bot]` -> github.com/renovate.png). `gh` is not used here."""
+Bots use their app's account name (`sample-bot[bot]` -> github.com/sample-bot.png). Some apps have no such account
+page, so when that fails for a `[bot]` login the app is looked up with `gh api apps/<name>` and its avatar is taken
+from avatars.githubusercontent.com/in/<app id>. That lookup is the only `gh` call here.
+The shared placeholder (data/avatars/placeholder.png) is written when missing."""
 from __future__ import annotations
 
 import re
@@ -14,6 +17,7 @@ from ..aggregate.common import Resolver
 from ..aggregate.contributors import avatar_name
 from ..aggregate.io import write_json
 from ..aggregate.raw import load_raw
+from .placeholder import ensure_placeholder, placeholder_png  # noqa: F401 - re-exported
 
 MAX_BYTES = 1_000_000
 TIMEOUT = 15
@@ -22,6 +26,8 @@ _HOSTS = {"github.com", "avatars.githubusercontent.com"}   # github.com/<login>.
 _LOGIN = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?")
 _LOGIN_FIELDS = ("author_login", "reviewer_login")
 _DELETED = {"ghost"}
+ACCOUNT_AVATAR = "https://github.com/{account}.png?size=200"
+APP_AVATAR = "https://avatars.githubusercontent.com/in/{app_id}?s=200"
 
 
 def _check(url: str) -> None:
@@ -61,26 +67,74 @@ def _logins(data_root: Path, config) -> list:
     return sorted(found.values(), key=str.lower)
 
 
-def download_avatars(data_root, config, fetch=None, log=print) -> list:
-    """Download missing avatars. Returns the logins that failed (also written to raw/avatars-failed.json)."""
+def _app_id(value) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
+def app_id_lookup(gh):
+    """account -> GitHub app id, through `gh api apps/<account>` on a `GitHub` client (so it counts against its
+    request budget). Raises on any failure or a response without a positive integer id."""
+    def lookup(account: str) -> int:
+        found = _app_id(gh.rest(f"apps/{account}").get("id"))
+        if found is None:
+            raise ValueError(f"app {account} has no usable id")
+        return found
+    return lookup
+
+
+def _default_app_id(account: str) -> int:
+    from ..github import GitHub
+    return app_id_lookup(GitHub())(account)
+
+
+def _image(fetch, url: str):
+    """The body of an image at `url`, or None when the fetch fails or the answer is not a usable image."""
+    try:
+        content_type, body = fetch(url)
+    except Exception:               # noqa: BLE001 - any failure falls back to the placeholder
+        return None
+    if not str(content_type).lower().startswith("image/") or not body or len(body) > MAX_BYTES:
+        return None
+    return body
+
+
+def _app_image(fetch, app_id, account: str):
+    try:
+        found = _app_id(app_id(account))
+    except Exception:               # noqa: BLE001 - any failure falls back to the placeholder
+        return None
+    if found is None:
+        return None
+    return _image(fetch, APP_AVATAR.format(app_id=found))
+
+
+def missing_avatars(data_root, config) -> list:
+    """Logins found in the raw records whose avatar file is not there yet (what a download would try)."""
+    folder = Path(data_root) / "avatars"
+    return [login for login in _logins(Path(data_root), config)
+            if not (folder / f"{avatar_name(login.lower())}.png").is_file()]
+
+
+def download_avatars(data_root, config, fetch=None, app_id=None, log=print) -> list:
+    """Download missing avatars and make sure the placeholder exists. Returns the logins that failed (also written
+    to raw/avatars-failed.json). `fetch(url) -> (content type, body)` and `app_id(account) -> int` are injectable."""
     data_root = Path(data_root)
     fetch = fetch or fetch_url
+    app_id = app_id or _default_app_id
     folder = data_root / "avatars"
+    ensure_placeholder(folder)
     failed, downloaded = [], 0
-    for login in _logins(data_root, config):
+    for login in missing_avatars(data_root, config):
         path = folder / f"{avatar_name(login.lower())}.png"
-        if path.is_file():
-            continue
         if not _LOGIN.fullmatch(login):
             failed.append(login)
             continue
-        account = login[:-5] if login.endswith("[bot]") else login
-        try:
-            content_type, body = fetch(f"https://github.com/{urllib.parse.quote(account)}.png?size=200")
-        except Exception:           # noqa: BLE001 - any failure falls back to the placeholder
-            failed.append(login)
-            continue
-        if not str(content_type).lower().startswith("image/") or not body or len(body) > MAX_BYTES:
+        is_app = login.endswith("[bot]")
+        account = login[:-5] if is_app else login
+        body = _image(fetch, ACCOUNT_AVATAR.format(account=urllib.parse.quote(account)))
+        if body is None and is_app:
+            body = _app_image(fetch, app_id, account)
+        if body is None:
             failed.append(login)
             continue
         folder.mkdir(parents=True, exist_ok=True)

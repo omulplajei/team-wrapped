@@ -322,14 +322,35 @@ def test_avatar_file_must_stay_inside_data_root(repo_root, sample_root, tmp_path
     assert not (tmp_path / "dist" / "bad").exists()
 
 
-def test_missing_referenced_avatar_is_skipped(repo_root, sample_root, tmp_path):
+def avatar_refs(index):
+    scene = next(s for s in read_payload(index)["scenes"] if s["id"] == "how-many-of-us")
+    return {c.get("login"): c["avatar_file"] for c in scene["data"]["contributors"]["list"]}
+
+
+def test_a_missing_referenced_avatar_falls_back_to_the_placeholder(repo_root, sample_root, tmp_path):
     data = sample_copy(sample_root, tmp_path)
     (data / "avatars" / "ada-dev.png").unlink()
     plain_script(data, "gap", "all", "how-many-of-us")
-    build("gap", repo_root, data, tmp_path / "dist")
+    result = build("gap", repo_root, data, tmp_path / "dist")
     out = tmp_path / "dist" / "gap"
     assert not (out / "avatars" / "ada-dev.png").exists()
-    assert (out / "avatars" / "placeholder.png").is_file()
+    assert (out / "avatars" / "placeholder.png").read_bytes() == (data / "avatars" / "placeholder.png").read_bytes()
+    refs = avatar_refs(result.index)
+    assert refs["ada-dev"] == "avatars/placeholder.png" and refs["ken-t"] == "avatars/ken-t.png"
+    assert result.warnings == []
+
+
+def test_missing_avatars_without_a_placeholder_warn(repo_root, sample_root, tmp_path, capsys):
+    data = sample_copy(sample_root, tmp_path)
+    (data / "avatars" / "ada-dev.png").unlink()
+    (data / "avatars" / "placeholder.png").unlink()
+    plain_script(data, "gap", "all", "how-many-of-us")
+    result = build("gap", repo_root, data, tmp_path / "dist")
+    assert any("avatars/ada-dev.png" in w and "placeholder" in w for w in result.warnings)
+    assert any(w.startswith("avatar file 'avatars/placeholder.png'") for w in result.warnings)
+    assert avatar_refs(result.index)["ada-dev"] == "avatars/ada-dev.png"
+    assert main(["build", "gap", "--root", str(repo_root), "--data", str(data), "--out", str(tmp_path / "d2")]) == 0
+    assert "warning: avatar file 'avatars/ada-dev.png'" in capsys.readouterr().err
 
 
 def test_music_volume_must_be_a_fraction(repo_root, sample_root, tmp_path):

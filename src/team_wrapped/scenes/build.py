@@ -9,6 +9,7 @@ import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..aggregate.contributors import PLACEHOLDER_AVATAR
 from .theme import css_overrides, load_theme
 from .validate import Report, Resolved, resolve_and_validate
 
@@ -32,6 +33,7 @@ class BuildResult:
     out_dir: Path
     index: Path
     skipped: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)
 
 
 def transform_renderer(name: str, source: str) -> str:
@@ -123,10 +125,26 @@ def _avatar_files(node) -> set[str]:
     return found
 
 
-def _prepare_avatars(payload: dict, data_root: Path) -> list[tuple[Path, str]]:
-    """Validate avatar references; return (source, relative name) for files that exist."""
+def _replace_avatars(node, replace: dict) -> None:
+    """Point every 'avatar_file' value found in `replace` at its replacement, in place."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "avatar_file" and isinstance(value, str):
+                node[key] = replace.get(value, value)
+            else:
+                _replace_avatars(value, replace)
+    elif isinstance(node, list):
+        for item in node:
+            _replace_avatars(item, replace)
+
+
+def _prepare_avatars(payload: dict, data_root: Path) -> tuple[list[tuple[Path, str]], list[str]]:
+    """Validate avatar references; return (source, relative name) for the files to copy, and warnings.
+    A reference to a missing file is pointed at the placeholder when data/avatars/placeholder.png exists, so the
+    page never shows a broken image; without a placeholder it is left as is and a warning says so."""
     root = data_root.resolve()
-    copies = []
+    copies, warnings, replace = [], [], {}
+    placeholder = data_root / PLACEHOLDER_AVATAR
     for ref in sorted(_avatar_files(payload)):
         if Path(ref).is_absolute():
             raise BuildError(f"avatar file '{ref}' must be relative to {data_root}")
@@ -135,7 +153,16 @@ def _prepare_avatars(payload: dict, data_root: Path) -> list[tuple[Path, str]]:
             raise BuildError(f"avatar file '{ref}' must stay inside {data_root}")
         if source.is_file():
             copies.append((source, ref))
-    return copies
+        elif ref != PLACEHOLDER_AVATAR and placeholder.is_file():
+            replace[ref] = PLACEHOLDER_AVATAR
+        else:
+            warnings.append(f"avatar file '{ref}' not found in {data_root} and no {PLACEHOLDER_AVATAR} to fall back "
+                            "to; the page will show a broken image")
+    if replace:
+        _replace_avatars(payload, replace)
+        if all(ref != PLACEHOLDER_AVATAR for _, ref in copies):
+            copies.append((placeholder.resolve(), PLACEHOLDER_AVATAR))
+    return copies, warnings
 
 
 def _embed_json(payload: dict) -> str:
@@ -176,7 +203,7 @@ def build(script_id: str, repo_root, data_root, out_root, theme: str | None = No
 
     payload["script"]["music"], music_file = _prepare_music(resolved.script.music, data_root)
 
-    avatars = _prepare_avatars(payload, data_root)
+    avatars, warnings = _prepare_avatars(payload, data_root)
 
     used_types = sorted({scene["type"] for scene in payload["scenes"]})
     renderers = "\n".join(
@@ -224,4 +251,4 @@ def build(script_id: str, repo_root, data_root, out_root, theme: str | None = No
             shutil.copy2(path, out_dir / "assets" / "theme" / path.name)
     index = out_dir / "index.html"
     index.write_text(page)
-    return BuildResult(out_dir=out_dir, index=index, skipped=skipped)
+    return BuildResult(out_dir=out_dir, index=index, skipped=skipped, warnings=warnings)

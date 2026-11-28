@@ -21,7 +21,7 @@ from pathlib import Path
 from ..config import Config
 from ..github import BudgetExhausted, GhError, NotFound, Forbidden, RateLimited, Transient
 from ..scenes.loader import LoadError
-from .avatars import download_avatars
+from .avatars import app_id_lookup, download_avatars
 from .checkpoint import narrowest, plan_commits, plan_pull_requests, read_checkpoints, write_checkpoint
 from .commits import fetch_commits
 from .common import iso, utc_bounds
@@ -228,5 +228,5 @@ def collect(data_root, config: Config, gh, plan: Plan, *, avatars: bool = True, 
     if result.stopped:
         log(f"stopped: {result.stopped}. Re-run the same command to continue.")
     if avatars and config.download_avatars:
-        result.avatars_failed = download_avatars(data_root, config, fetch=fetch, log=log)
+        result.avatars_failed = download_avatars(data_root, config, fetch=fetch, app_id=app_id_lookup(gh), log=log)
     return result

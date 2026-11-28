@@ -35,6 +35,8 @@ def _cmd_build(args) -> int:
         return 1
     for scene_id in result.skipped:
         print(f"skipped (unsupported): {scene_id}")
+    for warning in result.warnings:
+        print(f"warning: {warning}", file=sys.stderr)
     print(f"built {result.index}")
     return 0
 
